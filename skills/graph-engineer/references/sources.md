@@ -35,6 +35,27 @@ design.
   the condition is met." It's a stop-gate evaluated when the model tries to
   end a turn, not a scheduler.
 
+## Observed, but not independently verified for this skill's use case
+
+Real and not fabricated, but weaker evidence than the "What's official"
+entries above — don't treat these as validated for unattended `--write`
+work just because they exist.
+
+- **`/loop`** exists in at least some Claude Code environments as a way to
+  keep a session running across turns, independent of `/goal`. This has
+  been observed directly (not just referenced) in at least one session.
+  Its exact availability, persistence guarantees, and security semantics
+  for unattended `--write` work have not been independently verified or
+  stress-tested for this skill's use case — treat any `/loop` mention
+  elsewhere in this project as "known to exist," not "validated safe for
+  unattended graph-engineer cycles."
+- **`npx skills add <owner>/<repo>`** is a real, third-party installation
+  pattern from the [`skills` CLI](https://www.skills.sh/)
+  (`vercel-labs/skills`), not a Claude Code builtin. It writes into
+  `~/.claude/skills/`. Confirmed via the tool's own documentation/issues at
+  design time — re-verify against your installed version, since community
+  tooling around skills is young and moving.
+
 ## What is NOT official
 
 - **"Graph Engineering"** as a term is not used by Anthropic or OpenAI in any
@@ -57,12 +78,16 @@ design.
 
 ## Verification method
 
-These claims were checked directly against the installed binaries and plugin
-sources rather than trusted secondhand — reading plugin `commands/*.md`
-frontmatter, grepping the Claude Code CLI binary for built-in command
-strings, and checking the installed marketplace's `marketplace.json` for
-plugin ownership. Re-verify against your own installed versions before
-relying on exact flag names, since plugin internals can change between
+Methods differ by claim, not uniform across this whole file: the Codex
+plugin and `/goal` were checked directly against installed binaries and
+plugin sources — reading plugin `commands/*.md` frontmatter, grepping the
+Claude Code CLI binary for built-in command strings, and checking the
+installed marketplace's `marketplace.json` for plugin ownership. `/loop`
+was confirmed by direct observation in a live session, not binary
+inspection. `npx skills add` was confirmed via the `skills` CLI's own
+documentation and issue tracker, not by inspecting its source. Re-verify
+against your own installed versions before relying on exact flag names or
+behavior, since plugin internals and third-party tooling can change between
 releases.
 
 Verified against `openai-codex` plugin **v1.0.6** specifically (same pin as

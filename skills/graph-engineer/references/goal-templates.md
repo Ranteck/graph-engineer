@@ -12,22 +12,21 @@ turn, not a scheduler. To reset it: `/goal clear`.
 Use this when the feature needs a real design decision — send the task
 request first, review the SPEC node's contract, then lock in the goal.
 
-**Message 1** (triggers the skill):
+**Message 1** (triggers the skill, but does not authorize `--write` yet):
 ```
-implement [feature] in [file/folder] using Codex — Codex writes the code,
-adversarially self-reviews it, and only applies a fix once you've debated
-the finding with it. You don't touch code directly, only the contract and
-arbitration.
+Use graph-engineer to prepare [feature] in [file/folder]. Run PRE-FLIGHT and
+SPEC only, write and show me the contract in PROJECT_CONTEXT.md, then stop
+before IMPL. Do not invoke Codex with --write until I approve the contract.
 ```
 
-**Message 2**, once the contract is shown:
+**Message 2**, once the contract is shown and you approve it:
 ```
 /goal [feature]'s adversarial-review comes back with no valid findings
 (debatable ones were discussed and resolved, false positives documented)
 AND the test suite passes clean AND no implementation file was edited by
-Claude directly (only by Codex via codex:codex-rescue). If valid findings
-persist after 3 iterations of the CRITIQUE node, stop and report instead of
-continuing. Regardless of that 3-iteration cap, the skill's own anti-loop
+Claude directly (only by Codex via codex:codex-rescue). I approve the
+contract; continue from IMPL. If valid findings persist after 3 iterations
+of the CRITIQUE node, stop and report instead of continuing. Regardless of that 3-iteration cap, the skill's own anti-loop
 cutoff applies too: if the same underlying finding gets restated with no net
 code change across 2 consecutive CRITIQUE passes, stop and escalate to me
 immediately — whichever limit (2 or 3) is hit first wins. If no usable
@@ -47,14 +46,21 @@ writes `PROJECT_CONTEXT.md` using its best judgment from what you wrote here,
 and you review it once the cycle has already started. Fine for well-scoped
 tasks; riskier when "what to build" is ambiguous.
 
+This is the write-authorized template. For a read-only audit with no edits,
+use the Review-only template below instead of substituting "review" into
+this one — the two modes have different, incompatible permissions.
+
 ```
-/goal Implement/review [what you want] in [file/folder or scope], code
-written and fixed by Codex via graph-engineer (I don't edit anything
+/goal Implement [what you want] in [file/folder or scope], code written and
+fixed by Codex via graph-engineer (Claude does not edit implementation files
 directly). Stop condition: [your verifiable criterion] AND no valid findings
 remain from the adversarial-review (debatable ones get debated, not accepted
-blindly). If the same underlying finding persists for 2 rounds in a row with
-no net code change, stop and tell me instead of continuing — this is the
-skill's own floor and applies even if you'd otherwise keep going. If no usable
+blindly). If the cycle reaches 3 iterations of the CRITIQUE node without
+satisfying the stop condition, stop and report the remaining findings
+instead of continuing. If the same underlying finding persists for 2 rounds
+in a row with no net code change, stop and tell me instead of continuing —
+this is the skill's own floor and applies even if you'd otherwise keep
+going. If no usable
 quality-gate resolution exists and no explicit opt-out was given, or one
 activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
 report instead of continuing.
@@ -183,7 +189,14 @@ environmental failure actually prevents CRITIQUE from producing the report.
   work are allowed. Escalate only if repo/scope readability, Codex
   reachability, or another environmental condition actually prevents CRITIQUE
   from producing its report.
-- If the user wants the cycle running truly unattended across sessions (not
-  just within one turn), use `/loop` with the skill's trigger prompt instead
-  of (or in addition to) `/goal` — `/goal` is a per-turn stop-gate and doesn't
-  survive closing the session.
+- `/goal` is a per-turn stop-gate and doesn't survive closing the session.
+  Some Claude Code environments offer `/loop` for running across turns
+  instead of (or alongside) `/goal`, but its availability, persistence
+  guarantees, and security semantics for unattended `--write` work have not
+  been independently verified or stress-tested for this skill (see
+  `sources.md` — it only confirms turn-level persistence, not that it
+  survives closing the session) — it is the highest-risk way to run this
+  cycle, since no human reviews the contract or findings as they happen.
+  Treat it as
+  known-to-exist, not validated-safe, and prefer supervised `/goal` runs
+  until it's been exercised deliberately.
