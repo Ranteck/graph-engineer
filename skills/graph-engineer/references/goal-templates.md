@@ -27,7 +27,10 @@ arbitration.
 AND the test suite passes clean AND no implementation file was edited by
 Claude directly (only by Codex via codex:codex-rescue). If valid findings
 persist after 3 iterations of the CRITIQUE node, stop and report instead of
-continuing.
+continuing. Regardless of that 3-iteration cap, the skill's own anti-loop
+cutoff applies too: if the same underlying finding gets restated with no net
+code change across 2 consecutive CRITIQUE passes, stop and escalate to me
+immediately — whichever limit (2 or 3) is hit first wins.
 ```
 
 ## Single-message mode (task + stop condition combined)
@@ -42,8 +45,9 @@ tasks; riskier when "what to build" is ambiguous.
 written and fixed by Codex via graph-engineer (I don't edit anything
 directly). Stop condition: [your verifiable criterion] AND no valid findings
 remain from the adversarial-review (debatable ones get debated, not accepted
-blindly). If the same error persists for 2 rounds in a row, stop and tell me
-instead of continuing.
+blindly). If the same underlying finding persists for 2 rounds in a row with
+no net code change, stop and tell me instead of continuing — this is the
+skill's own floor and applies even if you'd otherwise keep going.
 ```
 
 ## Default — project with reliable tests
@@ -54,7 +58,10 @@ findings (debatable ones were debated and resolved, false positives
 documented) AND the project's test suite passes clean AND no implementation
 file was edited by Claude directly (only by Codex via codex:codex-rescue).
 If valid findings persist after 3 iterations of the CRITIQUE node, stop and
-report instead of continuing to iterate.
+report instead of continuing to iterate. Also apply the skill's anti-loop
+floor: if the same underlying finding is restated with no net code change
+across 2 consecutive CRITIQUE passes, stop and escalate immediately — that
+2-round floor wins over the 3-iteration cap whenever it triggers first.
 ```
 
 ## Project without reliable tests
@@ -65,7 +72,10 @@ findings, after at least one round of debate on the debatable ones. This
 project has no reliable test suite, so don't require a green run as the
 criterion — instead, before closing, list a summary of the changes Codex
 applied so I can review manually. Cap of 3 iterations of the CRITIQUE node;
-if reached without resolution, stop and escalate the decision to me.
+if reached without resolution, stop and escalate the decision to me. Also,
+regardless of that cap: if the same underlying finding is restated with no
+net code change across 2 consecutive CRITIQUE passes, stop and escalate
+right away instead of waiting for iteration 3.
 ```
 
 ## Refactor-only (no new feature, existing code)
@@ -75,6 +85,9 @@ if reached without resolution, stop and escalate the decision to me.
 (without --base), the valid findings were applied by Codex via
 codex:codex-rescue --resume-last, and a second adversarial-review pass finds
 no new findings related to the ones already fixed. Cap of 3 iterations.
+Anti-loop floor applies too: if the same underlying finding is restated
+with no net code change across 2 consecutive CRITIQUE passes, stop and
+escalate to me instead of running further iterations.
 ```
 
 ## Review-only (no `--write`, Codex is not authorized to touch files)
@@ -84,13 +97,23 @@ no new findings related to the ones already fixed. Cap of 3 iterations.
 report returned verbatim. I'm not authorizing --write in this cycle — the
 goal is only a triaged findings report (valid/debatable/false positive) so I
 can decide manually what to apply. Stop as soon as the report and the triage
-are complete, without moving to the REFACTOR node.
+are complete, without moving to the REFACTOR node. (No iteration cap needed
+here — this mode never loops back to CRITIQUE, so the skill's anti-loop
+floor doesn't apply.)
 ```
 
 ## Notes
 
 - The iteration cap (3 above) is a recommendation, not a fixed value: raise
   it for large/multi-file tasks, lower it to 1-2 for small changes.
+- The skill's anti-loop cutoff (2 consecutive CRITIQUE passes restating the
+  same underlying finding with no net code change) is a separate, harder
+  floor — it is not a recommendation and applies regardless of whatever
+  iteration cap you write into `/goal`. Whichever limit triggers first
+  wins. But note that limit can only actually end the turn if your `/goal`
+  text includes an explicit escalation/stop clause, as in the templates
+  above — without one, `/goal`'s literal condition still binds Claude to
+  keep working.
 - If the user wants the cycle running truly unattended across sessions (not
   just within one turn), use `/loop` with the skill's trigger prompt instead
   of (or in addition to) `/goal` — `/goal` is a per-turn stop-gate and doesn't

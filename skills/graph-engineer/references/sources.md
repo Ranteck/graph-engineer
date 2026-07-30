@@ -1,9 +1,15 @@
 # Sources and provenance
 
-This skill is built entirely on verified, real pieces — no invented commands,
-no fabricated official features. This file documents what's official and what
-isn't, because "graph engineering" got confused with several things during
-this skill's design.
+This skill is built on pieces checked directly against installed
+binaries/plugin sources at design time (see Verification method below) — no
+invented commands, no fabricated official features, as far as that check
+could confirm. It's a verification claim about how these facts were
+established, not a claim that they're permanently guaranteed to hold: plugin
+internals and CLI builtins can change between releases, so treat this as
+"verified once, against a specific version" rather than an absolute
+certainty. This file documents what's official and what isn't, because
+"graph engineering" got confused with several things during this skill's
+design.
 
 ## What's official
 
@@ -32,10 +38,11 @@ this skill's design.
 ## What is NOT official
 
 - **"Graph Engineering"** as a term is not used by Anthropic or OpenAI in any
-  official documentation. It's a community/marketing label that started
-  circulating in mid-2026, applied loosely to any multi-agent orchestration
-  setup. This skill implements the underlying official patterns, not a
-  product with that name.
+  official documentation. It's an unsourced, undated community/marketing
+  label, applied loosely to any multi-agent orchestration setup — no
+  specific origin or timeframe for its circulation is claimed here. This
+  skill implements the underlying official patterns, not a product with
+  that name.
 - `/codex:review --adversarial` does not exist as a flag — the real, separate
   command is `/codex:adversarial-review`.
 - The Codex plugin is not a community integration; be skeptical of any

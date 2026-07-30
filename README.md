@@ -40,13 +40,21 @@ fix can introduce its own problems, and because a first pass rarely catches
 everything. The loop keeps going until a condition you define is verifiably
 true: usually "no valid findings left, and tests pass."
 
-Two brakes keep this from running forever:
+Two brakes are meant to keep this from running forever, but the second one
+is conditional, not automatic:
 
 - **A `/goal` stop condition** (see [Usage](#usage)) — Claude Code's built-in
   stop-gate, which holds the turn open until the condition is met.
-- **An anti-loop cutoff** — if two rounds in a row produce the exact same
-  finding with no real change to the code, the cycle stops and escalates to
-  you instead of spinning.
+- **An anti-loop cutoff** — if, across two rounds in a row, Claude judges a
+  CRITIQUE finding to be the same underlying complaint restated with no real
+  change to the code, the cycle is meant to stop and escalate to you instead
+  of spinning. But `/goal` binds Claude to its literal condition: this
+  cutoff can only actually end the turn early if your `/goal` text itself
+  includes an explicit escalation/stop clause (the templates in
+  `references/goal-templates.md` include one — make sure yours does too).
+  Without that clause, Claude remains bound by "keep working until true" and
+  will surface the repeated finding rather than unilaterally stopping. Don't
+  rely on this as an unconditional guarantee.
 
 ## The cycle
 
@@ -69,6 +77,25 @@ Two brakes keep this from running forever:
       └──────────── if it fails or valid findings remain ────────┘
                      back to [3] — this is the loop edge
 ```
+
+Node 4 isn't a flat pass/fail filter — "debatable" findings open their own
+small sub-loop, invisible in the 6-node diagram above:
+
+```
+[4 DEBATE]  finding classified as "debatable"
+      ↓
+      Claude reinjects it to codex:codex-rescue with a counterargument
+      ("Codex flagged X, but Y because Z — do you stand by it or reconsider?")
+      ↓
+      Codex replies (still read-only — no --write in this call either)
+      ↓
+      Claude decides: valid → refactor, or false positive → discarded
+      (with written justification either way)
+```
+
+This sub-loop happens entirely inside node 4, before anything reaches node
+5 — it's an extra round-trip to Codex per debatable finding, not just a
+triage checkbox.
 
 ## A worked example
 
@@ -96,10 +123,19 @@ applies a fix once we've debated the finding.
 
 ## Why
 
-1. **Claude's context/tokens stay cheap.** Only nodes 1, 4, and 6 involve
-   Claude doing real work, and none of them touch implementation code. The
+1. **Claude's context/tokens stay cheap — relative to doing the coding
+   itself.** Only nodes 1, 4, and 6 involve Claude doing real work, and
+   Claude never *edits* implementation code (Edit/Write) at any node — the
    expensive, code-writing work (nodes 2, 3, 5) runs entirely on Codex,
-   billed through your OpenAI account instead of Claude usage.
+   billed through your OpenAI account instead of Claude usage. Node 4
+   (DEBATE) is an exception to "Claude doesn't touch implementation code" in
+   one narrow sense: Claude may *read* the specific lines/files a finding
+   references, to verify the claim before ruling on it — reading a few
+   lines to fact-check is cheap; editing is what's actually forbidden. Also
+   note "cheap" is relative, not free in absolute terms: a cycle that loops
+   many rounds accumulates CRITIQUE findings, triage notes, and prior
+   context in Claude's own conversation across iterations, so a long-running
+   loop is not free even though each individual node is lightweight.
 2. **The debate node (4) prevents blind self-correction.** Without it, Codex
    critiques its own code and "fixes" it with no filter — findings get
    applied uncritically, and the loop can oscillate between two states
@@ -119,6 +155,12 @@ This skill needs the official OpenAI Codex plugin for Claude Code:
 
 `/codex:setup` should report `Status: ready`. Also needs
 [Claude Code](https://claude.com/claude-code) itself, obviously.
+
+**Tested against `openai-codex` plugin v1.0.6.** This skill's routing
+assumptions (single `codex:codex-rescue` entry point, `--write` /
+`--resume-last` flag behavior, sandbox enforcement of read-only CRITIQUE
+calls) were verified against that version. A future plugin update could
+change the command surface and silently break these assumptions.
 
 ## Installation
 
