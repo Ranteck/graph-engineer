@@ -146,9 +146,10 @@ Re-resolve from the priority list when any field or check required for the
 persisted mode fails.
 
 If there is no usable candidate and no persisted explicit opt-out, stop and
-ask the user before IMPL runs. `git diff --check` may be extra hygiene, but it
-is never a substitute gate. In an autonomous or `/goal`-driven run, failure
-to resolve is an escalation condition, not permission to degrade silently.
+ask the user before IMPL runs in standard mode or before the initial
+refactor-only CRITIQUE. `git diff --check` may be extra hygiene, but it is never
+a substitute gate. In an autonomous or `/goal`-driven run, failure to resolve
+is an escalation condition, not permission to degrade silently.
 
 ## Execute without hidden side effects
 

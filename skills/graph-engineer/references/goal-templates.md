@@ -121,8 +121,9 @@ before the first CRITIQUE; it first runs after the first REFACTOR write.
 (without --base), the valid findings were applied by Codex through the
 sanctioned REFACTOR procedure—either the normal codex:codex-rescue
 --resume-last session or the documented fresh-session fallback with its
-required inline continuity summary—and a second adversarial-review pass finds
-no new findings related to the ones already fixed. Cap of 3 iterations.
+required inline continuity summary—and subsequent adversarial-review passes
+continue through DEBATE until a final pass leaves no valid findings in scope.
+Cap of 3 iterations.
 Anti-loop floor applies too: if the same underlying finding is restated
 with no net code change across 2 consecutive CRITIQUE passes, stop and
 escalate to me instead of running further iterations. If no usable

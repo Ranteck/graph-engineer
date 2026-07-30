@@ -284,6 +284,28 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    Do not require or assume a PROJECT_CONTEXT.md contract exists.
    Challenge the approach, design choices, and assumptions — don't just list
    defects. Read-only: do not fix anything, just report findings.")
+
+   # Refactor-only, first CRITIQUE (fresh thread, no SPEC contract exists):
+   Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
+   [scope] as it currently exists on disk, applying these user-supplied
+   criteria if any: [criteria]. PROJECT_CONTEXT.md's QUALITY GATE metadata is
+   not a functional contract for this feature — do not require or assume one
+   exists; judge the code against its own apparent intent and against the
+   criteria given. Challenge the approach, design choices, and assumptions —
+   don't just list defects. Read-only: do not fix anything, just report
+   findings.")
+
+   # Refactor-only, every subsequent CRITIQUE (same continuity rules as the
+   # standard cycle — --resume-last, plus the fresh-fallback continuity
+   # summary if node 6 had to use it):
+   Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
+   [scope] again now that the previously agreed fixes have been applied,
+   considering the prior findings and triage decisions.
+   Continuity summary if the fresh REFACTOR fallback was used: [concise
+   relevant prior findings, triage decisions, and constraints].
+   Challenge the approach, design choices, and assumptions — don't just list
+   defects. Read-only: do not fix anything, just report findings.
+   --resume-last")
    ```
    Return the findings verbatim first, without summarizing.
 
@@ -300,7 +322,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    - **Valid** → goes to node 6 as-is.
    - **Debatable** → reinjected to `codex:codex-rescue` with the explicit
      counterargument ("Codex flagged X, but Y because Z — do you stand by it
-     or reconsider?") and its reply is awaited before deciding.
+     or reconsider?"), always with `--resume-last` and never `--write`, so
+     the reinjection stays on the same thread instead of becoming the
+     "latest" session that a later REFACTOR's `--resume-last` might
+     mistakenly resume. Its reply is awaited before deciding.
    - **False positive** → discarded, with one line of written justification
      (never silent acceptance or silent rejection).
    Without this step Codex self-reviews with no filter, and the cycle can
@@ -348,8 +373,17 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    `--resume-last --write`. If the sandbox rejects that transition, confirm
    that no changes landed, then start a **fresh, non-resumed session with
    `--write` from the beginning**. Do not keep retrying the read-only resume.
-   The observed failure mode was a sandbox-permission rejection followed by
-   `git diff --check` confirming no changes.
+   The observed failure mode was a sandbox-permission rejection.
+
+   `git diff --check` only detects whitespace/conflict-marker errors — it
+   does not prove the tree is unchanged, and a rejected write can still leave
+   a partial mutation behind. Before the resumed attempt, capture
+   `git status --porcelain=v1 -uall`, `git diff HEAD --binary`, and the same
+   NUL-safe content-hash manifest of initially-untracked paths used for
+   QUALITY GATE side-effect detection. After the rejection, compare against
+   that snapshot. Only start the fresh session if the snapshots match
+   exactly; any delta, or any inability to prove equality, is an escalation
+   condition, not a silent continue.
 
    Before starting that fresh session, build a concise continuity summary
    from the current feature's `PROJECT_CONTEXT.md` section and the

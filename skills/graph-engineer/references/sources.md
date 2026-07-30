@@ -64,3 +64,6 @@ strings, and checking the installed marketplace's `marketplace.json` for
 plugin ownership. Re-verify against your own installed versions before
 relying on exact flag names, since plugin internals can change between
 releases.
+
+Verified against `openai-codex` plugin **v1.0.6** specifically (same pin as
+`README.md` and `skills/graph-engineer/SKILL.md`).

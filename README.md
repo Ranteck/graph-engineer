@@ -118,7 +118,8 @@ small sub-loop, invisible in the 8-node diagram above:
 [5 DEBATE]  finding classified as "debatable"
       ↓
       Claude reinjects it to codex:codex-rescue with a counterargument
-      ("Codex flagged X, but Y because Z — do you stand by it or reconsider?")
+      ("Codex flagged X, but Y because Z — do you stand by it or reconsider?"),
+      always with --resume-last so the thread stays continuous
       ↓
       Codex replies (still read-only — no --write in this call either)
       ↓
@@ -276,10 +277,11 @@ automates.
   account.
 - **A read-only Codex session may stay read-only when resumed.** A session
   created without write access has been observed rejecting a later
-  `--resume-last --write` attempt at the sandbox boundary; `git diff --check`
-  confirmed that no changes landed. Recovery is to start a fresh,
-  non-resumed Codex session with `--write` from the beginning, not to retry
-  the resume.
+  `--resume-last --write` attempt at the sandbox boundary. Recovery is to
+  compare a before/after snapshot (untracked-file status, tracked diff, and
+  content hashes — `git diff --check` alone doesn't prove nothing changed)
+  and, only if they match, start a fresh, non-resumed Codex session with
+  `--write` from the beginning instead of retrying the resume.
 - **Same-model review is not independent verification.** IMPL and CRITIQUE
   both use Codex, so they can share blind spots and self-preference bias.
   Claude's evidence-based DEBATE is a mitigation, not a proof of correctness.

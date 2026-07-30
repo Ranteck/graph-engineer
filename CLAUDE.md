@@ -59,9 +59,10 @@ Related invariants worth preserving when editing `SKILL.md`:
 - After the first CRITIQUE in a cycle, every subsequent CRITIQUE and normal REFACTOR
   call passes `--resume-last` so Codex retains its own prior findings and Claude's
   triage decisions. The documented REFACTOR exception applies if a resumed read-only
-  session rejects `--resume-last --write`: confirm no changes landed, then start a
-  fresh non-resumed session with `--write` from the beginning instead of retrying the
-  resume.
+  session rejects `--resume-last --write`: compare a before/after snapshot (untracked
+  status, tracked diff, content hashes — `git diff --check` alone doesn't prove
+  nothing changed) and, only if they match, start a fresh non-resumed session with
+  `--write` from the beginning instead of retrying the resume.
 - DEBATE (node 5) must classify every finding as valid / debatable / false positive —
   never a flat pass/fail — and false-positive rulings need one line of written
   justification, not silent discard.
