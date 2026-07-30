@@ -1,11 +1,13 @@
 # graph-engineer
 
 A Claude Code skill for a common problem: you want a second model (Codex) to
-do the actual coding — so Claude's own context stays cheap — but you don't
-want Codex grading its own homework. `graph-engineer` makes Claude the
-orchestrator and arbiter, and Codex the one who writes, adversarially
-reviews, and fixes the code, running as a self-correcting loop instead of a
-single implement-and-hope pass.
+apply the code while Claude preserves context for orchestration and judgment,
+and you don't want Codex grading its own homework without arbitration.
+`graph-engineer` makes Claude the orchestrator and arbiter, and Codex the one
+who writes, adversarially reviews, and fixes the code, running as a
+self-correcting loop instead of a single implement-and-hope pass. The split
+isn't only about token cost: it also separates roles and puts a different
+model in the arbitration path.
 
 ## What is "graph engineering"?
 
@@ -14,14 +16,15 @@ useful as a mental model anyway: think of the workflow as a small graph.
 
 - **Nodes** are units of work: Claude writing a spec, Codex implementing,
   Codex critiquing, Claude triaging.
-- **Edges** are handoffs between them: spec → implementation → critique →
-  triage → fix.
+- **Edges** are handoffs between them: spec → implementation → mechanical
+  quality gate → critique → triage → fix.
 
-What makes it a *graph* instead of a *list* is one specific edge: **VERIFY
-loops back to CRITIQUE**. That return edge is what lets the same critique
-step run again, and again, over code that's already been through one round
-of fixes — until a stop condition is actually met. Take that edge out and
-you just have a pipeline: write once, review once, done, bugs and all.
+What makes it a *graph* instead of a *list* is its return edges: a failed
+QUALITY GATE returns to the last writer, and **VERIFY loops back to
+CRITIQUE**. The latter lets the same critique step run again, and again, over
+code that's already been through one round of fixes — until a stop condition
+is actually met. Take those edges out and you just have a pipeline: write
+once, review once, done, bugs and all.
 
 This skill is a concrete implementation of two patterns Anthropic *does*
 document officially — **Orchestrator-Workers** and **Evaluator-Optimizer**,
@@ -35,13 +38,14 @@ with online but isn't.
 ## It's a loop, not a pipeline
 
 The cycle doesn't stop after one implement→review→fix pass. Every time Codex
-fixes something, the critique step runs again on the *new* code — because a
-fix can introduce its own problems, and because a first pass rarely catches
-everything. The loop keeps going until a condition you define is verifiably
-true: usually "no valid findings left, and tests pass."
+writes or fixes something, the mechanical QUALITY GATE must pass before
+critique runs on the *new* code — because a fix can introduce its own
+problems, and because a first pass rarely catches everything. The outer loop
+keeps going until a condition you define is verifiably true: usually "no
+valid findings left, and functional tests pass."
 
-Two brakes are meant to keep this from running forever, but the second one
-is conditional, not automatic:
+The outer critique loop has two brakes, but the second one is conditional,
+not automatic:
 
 - **A `/goal` stop condition** (see [Usage](#usage)) — Claude Code's built-in
   stop-gate, which holds the turn open until the condition is met.
@@ -56,33 +60,60 @@ is conditional, not automatic:
   will surface the repeated finding rather than unilaterally stopping. Don't
   rely on this as an unconditional guarantee.
 
-## The cycle
+QUALITY GATE has its own separate absolute brake: no more than 3 failed runs
+per writer activation. That cap never expands based on apparent progress.
+
+## The cycle (8 nodes)
 
 ```
-[1 SPEC]      Claude writes the contract to PROJECT_CONTEXT.md   (cheap, Claude only)
+[0 PRE-FLIGHT] Claude checks branch, worktree, and gate resolution
       ↓
-[2 IMPL]      Agent → codex:codex-rescue --write                 (Codex writes)
+[1 SPEC]       Claude writes the contract to PROJECT_CONTEXT.md  (cheap, Claude only)
       ↓
-[3 CRITIQUE]  Agent → codex:codex-rescue (read-only, adversarial) (Codex critiques)
+[2 IMPL]       Agent → codex:codex-rescue --write                (Codex writes)
       ↓
-[4 DEBATE]    Claude reads findings and TRIAGES them:             (read-only, cheap)
+[3 QUALITY GATE] Claude runs the resolved mechanical checks
+      ├── fail → back to the last writer (max 3 failed runs per activation)
+      └── pass
+             ↓
+[4 CRITIQUE]   Agent → codex:codex-rescue (read-only, adversarial)
+      ↓
+[5 DEBATE]     Claude reads findings and TRIAGES them:            (read-only, cheap)
               · valid          → goes to refactor
               · debatable      → reinjected to Codex with a counterargument
               · false positive → discarded, with written justification
-      ↓
-[5 REFACTOR]  Agent → codex:codex-rescue --resume-last --write   (Codex fixes)
-      ↓
-[6 VERIFY]    Claude runs the project's tests                    (cheap)
-      ↓
-      └──────────── if it fails or valid findings remain ────────┘
-                     back to [3] — this is the loop edge
+      ├── valid findings → [6 REFACTOR] → [3 QUALITY GATE]
+      └── no findings    → [7 VERIFY]
+                              ├── pass → DONE
+                              └── fail → [4 CRITIQUE] → [5 DEBATE]
 ```
 
-Node 4 isn't a flat pass/fail filter — "debatable" findings open their own
-small sub-loop, invisible in the 6-node diagram above:
+QUALITY GATE is numbered so the invariant is visible, but it is not a new
+actor or an unconditional pipeline stage: it is a capped retry edge attached
+to whichever writer, IMPL or REFACTOR, just ran. No CRITIQUE call may run on
+a tree that has not passed QUALITY GATE since the last write. The gate is
+mechanical only (lint, formatting, type checking, and build), while VERIFY
+owns functional tests and acceptance criteria. A VERIFY failure returns to
+CRITIQUE for classification as an implementation defect, test defect,
+contract mismatch, or environmental failure; it never takes the fast
+mechanical-fixer route. If VERIFY cannot execute assertions at all because of
+an environmental block, the cycle escalates directly to the user.
+
+Before IMPL, PRE-FLIGHT resolves the project's real local quality command and
+stores the resolution—not a previous result—inside the current feature's
+section in `PROJECT_CONTEXT.md`. It revalidates that cached resolution after
+each write. Ambiguous or unsafe candidates require one user decision; no
+usable candidate stops the cycle before IMPL unless the user explicitly opts
+out. See
+[`skills/graph-engineer/references/quality-gate-detection.md`](skills/graph-engineer/references/quality-gate-detection.md)
+for the resolver order, safety checks, cache schema, bundled-command split,
+retry cap, and escalation rules.
+
+Node 5 isn't a flat pass/fail filter — "debatable" findings open their own
+small sub-loop, invisible in the 8-node diagram above:
 
 ```
-[4 DEBATE]  finding classified as "debatable"
+[5 DEBATE]  finding classified as "debatable"
       ↓
       Claude reinjects it to codex:codex-rescue with a counterargument
       ("Codex flagged X, but Y because Z — do you stand by it or reconsider?")
@@ -93,8 +124,8 @@ small sub-loop, invisible in the 6-node diagram above:
       (with written justification either way)
 ```
 
-This sub-loop happens entirely inside node 4, before anything reaches node
-5 — it's an extra round-trip to Codex per debatable finding, not just a
+This sub-loop happens entirely inside node 5, before anything reaches node
+6 — it's an extra round-trip to Codex per debatable finding, not just a
 triage checkbox.
 
 ## A worked example
@@ -106,41 +137,50 @@ using Codex — Codex writes it, adversarially reviews its own work, and only
 applies a fix once we've debated the finding.
 ```
 
+0. **PRE-FLIGHT** — Claude confirms the branch and worktree are safe, then
+   resolves and persists the feature's mechanical quality gate.
 1. **SPEC** — Claude writes the endpoint's contract (inputs, signature
    verification rule, response codes) to `PROJECT_CONTEXT.md`.
 2. **IMPL** — Codex writes `webhooks.ts` following that contract.
-3. **CRITIQUE** — Codex reviews its own code adversarially and reports, say,
+3. **QUALITY GATE** — The resolved local lint/typecheck/build command passes
+   over the newly written tree.
+4. **CRITIQUE** — Codex reviews its own code adversarially and reports, say,
    two findings: *"the signature comparison uses `===` instead of a
    constant-time compare — timing attack surface"* and *"the handler doesn't
    log request IDs"*.
-4. **DEBATE** — Claude triages: the timing-attack finding is **valid**, goes
-   to refactor. The logging one is judged a **false positive** for this repo
-   (it has no logging convention anywhere else) — discarded, with that reason
+5. **DEBATE** — Claude reads the full security-related file before ruling,
+   then triages: the timing-attack finding is **valid**, so it goes to
+   refactor. The logging one is judged a **false positive** for this repo (it
+   has no logging convention anywhere else) — discarded, with that reason
    written down, not silently dropped.
-5. **REFACTOR** — Codex swaps in a constant-time comparison.
-6. **VERIFY** — Tests run green. CRITIQUE runs once more on the fixed code;
-   no new findings. The `/goal` condition is met, the loop ends.
+6. **REFACTOR** — Codex swaps in a constant-time comparison.
+   - **Mini-loop:** Return to node **3 QUALITY GATE**, then node **4
+     CRITIQUE** — both pass this time.
+7. **VERIFY** — Functional tests run green. The `/goal` condition is met and
+   the loop ends.
 
 ## Why
 
-1. **Claude's context/tokens stay cheap — relative to doing the coding
-   itself.** Only nodes 1, 4, and 6 involve Claude doing real work, and
-   Claude never *edits* implementation code (Edit/Write) at any node — the
-   expensive, code-writing work (nodes 2, 3, 5) runs entirely on Codex,
-   billed through your OpenAI account instead of Claude usage. Node 4
-   (DEBATE) is an exception to "Claude doesn't touch implementation code" in
-   one narrow sense: Claude may *read* the specific lines/files a finding
-   references, to verify the claim before ruling on it — reading a few
-   lines to fact-check is cheap; editing is what's actually forbidden. Also
-   note "cheap" is relative, not free in absolute terms: a cycle that loops
-   many rounds accumulates CRITIQUE findings, triage notes, and prior
-   context in Claude's own conversation across iterations, so a long-running
-   loop is not free even though each individual node is lightweight.
-2. **The debate node (4) prevents blind self-correction.** Without it, Codex
-   critiques its own code and "fixes" it with no filter — findings get
-   applied uncritically, and the loop can oscillate between two states
-   forever. Triage forces every finding through valid/debatable/false-positive
-   before anything gets refactored.
+1. **Token and context savings.** Claude keeps its context focused on the
+   contract, orchestration, and judgment while Codex carries the
+   implementation-heavy work. "Cheap" is relative, not free: repeated loops
+   still accumulate findings and triage context. Nor does the design mean
+   "Codex always implements only because it costs fewer Claude tokens":
+   Codex is also routed to implementation because applying code is a role it
+   performs well, independent of cost.
+2. **Less correlated self-review failure.** Reflection improves results, but
+   a writer evaluating its own output can repeat the same blind spots; see
+   Andrew Ng's
+   [Agentic Design Patterns — Reflection](https://www.deeplearning.ai/the-batch/agentic-design-patterns-part-2-reflection/).
+   Claude's DEBATE arbitration adds a different model to the decision path
+   instead of letting Codex apply every self-critique automatically. This
+   mitigates, but does not eliminate, the known same-model self-preference
+   bias: IMPL and CRITIQUE still use the same underlying Codex model.
+3. **Specialization by role.** Codex writes and mechanically repairs code;
+   Codex's adversarial pass challenges it; Claude owns the contract, checks
+   evidence, and arbitrates disputed findings. Each role gets a narrower,
+   explicit responsibility instead of one model silently switching between
+   author, reviewer, and judge.
 
 ## Requirements
 
@@ -182,7 +222,13 @@ written and fixed by Codex via graph-engineer (I don't edit anything
 directly). Stop condition: [your verifiable criterion] AND no valid findings
 remain from the adversarial-review (debatable ones get debated, not accepted
 blindly). If the same error persists for 2 rounds in a row, stop and tell me
-instead of continuing.
+instead of continuing. If no usable quality-gate resolution exists without an
+explicit opt-out, or one activation reaches 3 failed QUALITY GATE runs, stop
+and tell me instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 **Two messages** (recommended when the contract needs discussion first — you
@@ -207,6 +253,7 @@ More templates (with tests, without tests, refactor-only, review-only) in
 | Orchestrator | User + Claude Code session | — |
 | Loop driver | `/goal <condition>` | built-in; `/goal clear` to reset |
 | Worker (implements) | subagent `codex:codex-rescue` | `Agent` tool, `--write` |
+| Mechanical gate | project-local resolved command | local shell, cached per feature |
 | Evaluator (critiques) | same subagent, read-only | `Agent` tool, no `--write`, adversarial prompt |
 | Fixer | same subagent, resumed | `Agent` tool, `--resume-last --write` |
 
@@ -225,6 +272,15 @@ automates.
 - **Codex's cost is separate from Claude's.** This skill reduces Claude's
   context/token usage; Codex calls are billed through your own OpenAI
   account.
+- **A read-only Codex session may stay read-only when resumed.** A session
+  created without write access has been observed rejecting a later
+  `--resume-last --write` attempt at the sandbox boundary; `git diff --check`
+  confirmed that no changes landed. Recovery is to start a fresh,
+  non-resumed Codex session with `--write` from the beginning, not to retry
+  the resume.
+- **Same-model review is not independent verification.** IMPL and CRITIQUE
+  both use Codex, so they can share blind spots and self-preference bias.
+  Claude's evidence-based DEBATE is a mitigation, not a proof of correctness.
 - **`/goal` is a per-turn stop-gate, not a scheduler.** It keeps one turn
   alive until the condition is met; it doesn't survive closing the session.
   For unattended runs across sessions, see the `/loop` note in

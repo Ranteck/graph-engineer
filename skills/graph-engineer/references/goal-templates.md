@@ -30,7 +30,14 @@ persist after 3 iterations of the CRITIQUE node, stop and report instead of
 continuing. Regardless of that 3-iteration cap, the skill's own anti-loop
 cutoff applies too: if the same underlying finding gets restated with no net
 code change across 2 consecutive CRITIQUE passes, stop and escalate to me
-immediately — whichever limit (2 or 3) is hit first wins.
+immediately — whichever limit (2 or 3) is hit first wins. If no usable
+quality-gate resolution exists and no explicit opt-out was given, or one
+activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
+report instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Single-message mode (task + stop condition combined)
@@ -47,7 +54,14 @@ directly). Stop condition: [your verifiable criterion] AND no valid findings
 remain from the adversarial-review (debatable ones get debated, not accepted
 blindly). If the same underlying finding persists for 2 rounds in a row with
 no net code change, stop and tell me instead of continuing — this is the
-skill's own floor and applies even if you'd otherwise keep going.
+skill's own floor and applies even if you'd otherwise keep going. If no usable
+quality-gate resolution exists and no explicit opt-out was given, or one
+activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
+report instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Default — project with reliable tests
@@ -61,7 +75,14 @@ If valid findings persist after 3 iterations of the CRITIQUE node, stop and
 report instead of continuing to iterate. Also apply the skill's anti-loop
 floor: if the same underlying finding is restated with no net code change
 across 2 consecutive CRITIQUE passes, stop and escalate immediately — that
-2-round floor wins over the 3-iteration cap whenever it triggers first.
+2-round floor wins over the 3-iteration cap whenever it triggers first. If no
+usable quality-gate resolution exists and no explicit opt-out was given, or
+one activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop
+and report instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Project without reliable tests
@@ -75,7 +96,14 @@ applied so I can review manually. Cap of 3 iterations of the CRITIQUE node;
 if reached without resolution, stop and escalate the decision to me. Also,
 regardless of that cap: if the same underlying finding is restated with no
 net code change across 2 consecutive CRITIQUE passes, stop and escalate
-right away instead of waiting for iteration 3.
+right away instead of waiting for iteration 3. If no usable quality-gate
+resolution exists and no explicit opt-out was given, or one activation
+reaches the absolute cap of 3 failed QUALITY GATE runs, stop and report
+instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Refactor-only (no new feature, existing code)
@@ -87,7 +115,14 @@ codex:codex-rescue --resume-last, and a second adversarial-review pass finds
 no new findings related to the ones already fixed. Cap of 3 iterations.
 Anti-loop floor applies too: if the same underlying finding is restated
 with no net code change across 2 consecutive CRITIQUE passes, stop and
-escalate to me instead of running further iterations.
+escalate to me instead of running further iterations. If no usable
+quality-gate resolution exists and no explicit opt-out was given, or one
+activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
+report instead of continuing.
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Review-only (no `--write`, Codex is not authorized to touch files)
@@ -100,6 +135,10 @@ can decide manually what to apply. Stop as soon as the report and the triage
 are complete, without moving to the REFACTOR node. (No iteration cap needed
 here — this mode never loops back to CRITIQUE, so the skill's anti-loop
 floor doesn't apply.)
+At any node, stop and report immediately on an environmental failure (timeout,
+out-of-memory, read-only filesystem, or a missing command/dependency), or if
+PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
+precondition.
 ```
 
 ## Notes
@@ -114,6 +153,15 @@ floor doesn't apply.)
   text includes an explicit escalation/stop clause, as in the templates
   above — without one, `/goal`'s literal condition still binds Claude to
   keep working.
+- Include QUALITY GATE escalation in autonomous `/goal` stop clauses: stop
+  and report if no usable gate resolution or explicit opt-out exists, or if
+  one activation reaches the absolute cap of 3 failed gate runs. Never turn
+  either condition into a silent skip or an unbounded retry.
+- Include the environmental/PRE-FLIGHT stop clause in every mode, including
+  review-only. Review-only remains excluded from QUALITY GATE resolution and
+  retry-cap clauses, but it still enters PRE-FLIGHT at node 0 and can be
+  unable to complete its report when a safety precondition or required
+  environment is unavailable.
 - If the user wants the cycle running truly unattended across sessions (not
   just within one turn), use `/loop` with the skill's trigger prompt instead
   of (or in addition to) `/goal` — `/goal` is a per-turn stop-gate and doesn't
