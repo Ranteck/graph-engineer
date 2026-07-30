@@ -108,10 +108,20 @@ precondition.
 
 ## Refactor-only (no new feature, existing code)
 
+Follow the refactor-only entry path defined in `../SKILL.md`:
+PRE-FLIGHT (write-authorized, with the standard cycle's preconditions) ->
+first fresh-thread CRITIQUE over the current tree -> DEBATE -> REFACTOR when
+findings are valid -> QUALITY GATE -> second CRITIQUE -> DEBATE, repeating
+until no findings remain -> DONE. PRE-FLIGHT resolves and persists the QUALITY
+GATE command because REFACTOR writes are expected, but the gate does not run
+before the first CRITIQUE; it first runs after the first REFACTOR write.
+
 ```
 /goal An adversarial-review of Codex ran over the current working tree
-(without --base), the valid findings were applied by Codex via
-codex:codex-rescue --resume-last, and a second adversarial-review pass finds
+(without --base), the valid findings were applied by Codex through the
+sanctioned REFACTOR procedure—either the normal codex:codex-rescue
+--resume-last session or the documented fresh-session fallback with its
+required inline continuity summary—and a second adversarial-review pass finds
 no new findings related to the ones already fixed. Cap of 3 iterations.
 Anti-loop floor applies too: if the same underlying finding is restated
 with no net code change across 2 consecutive CRITIQUE passes, stop and
@@ -127,6 +137,13 @@ precondition.
 
 ## Review-only (no `--write`, Codex is not authorized to touch files)
 
+Review-only uses a distinct read-only PRE-FLIGHT. Require only that the
+repository and requested scope are readable, Codex is reachable, and CRITIQUE
+can produce its report. Do not require a clean working tree, a non-`main`
+branch, a writable filesystem, any `PROJECT_CONTEXT.md` write, or QUALITY GATE
+resolution/execution. Escalate only an environmental failure that actually
+prevents the report from being produced.
+
 ```
 /goal An adversarial-review of Codex ran over [scope] and I have the full
 report returned verbatim. I'm not authorizing --write in this cycle — the
@@ -135,10 +152,11 @@ can decide manually what to apply. Stop as soon as the report and the triage
 are complete, without moving to the REFACTOR node. (No iteration cap needed
 here — this mode never loops back to CRITIQUE, so the skill's anti-loop
 floor doesn't apply.)
-At any node, stop and report immediately on an environmental failure (timeout,
-out-of-memory, read-only filesystem, or a missing command/dependency), or if
-PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
-precondition.
+Use the review-only PRE-FLIGHT: require only readable repo/scope, reachable
+Codex, and a CRITIQUE invocation capable of producing the report. A dirty
+working tree, `main` branch, or read-only filesystem is allowed. Do not write
+PROJECT_CONTEXT.md or resolve/run QUALITY GATE. Stop and report only if an
+environmental failure actually prevents CRITIQUE from producing the report.
 ```
 
 ## Notes
@@ -157,11 +175,13 @@ precondition.
   and report if no usable gate resolution or explicit opt-out exists, or if
   one activation reaches the absolute cap of 3 failed gate runs. Never turn
   either condition into a silent skip or an unbounded retry.
-- Include the environmental/PRE-FLIGHT stop clause in every mode, including
-  review-only. Review-only remains excluded from QUALITY GATE resolution and
-  retry-cap clauses, but it still enters PRE-FLIGHT at node 0 and can be
-  unable to complete its report when a safety precondition or required
-  environment is unavailable.
+- Include the full environmental/write-safety PRE-FLIGHT stop clause only in
+  modes that may reach IMPL or REFACTOR. Review-only still enters PRE-FLIGHT at
+  node 0, but uses its lighter variant above: dirty trees, `main`, read-only
+  filesystems, omitted `PROJECT_CONTEXT.md` writes, and omitted QUALITY GATE
+  work are allowed. Escalate only if repo/scope readability, Codex
+  reachability, or another environmental condition actually prevents CRITIQUE
+  from producing its report.
 - If the user wants the cycle running truly unattended across sessions (not
   just within one turn), use `/loop` with the skill's trigger prompt instead
   of (or in addition to) `/goal` — `/goal` is a per-turn stop-gate and doesn't

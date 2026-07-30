@@ -106,31 +106,71 @@ PRE-FLIGHT -> SPEC -> IMPL -> QUALITY GATE
                          +- pass -> CRITIQUE
 ```
 
+Review-only uses a separate terminal path rather than the 8-node write cycle:
+
+```
+PRE-FLIGHT (review-only variant) -> CRITIQUE -> DEBATE/report -> DONE
+```
+
+It explicitly skips SPEC, IMPL, QUALITY GATE, REFACTOR, and VERIFY. Its
+CRITIQUE reviews the requested scope and any user-supplied criteria directly;
+it neither requires nor assumes that a `PROJECT_CONTEXT.md` contract exists.
+
+Refactor-only is a separate write-authorized entry path over already-existing
+code, with no new SPEC or IMPL:
+
+```
+PRE-FLIGHT (write-authorized) -> CRITIQUE (first pass, fresh thread, current tree)
+  -> DEBATE -> REFACTOR (if valid findings) -> QUALITY GATE
+  -> CRITIQUE (second pass) -> DEBATE -> ... -> DONE (no findings remain)
+```
+
+PRE-FLIGHT uses the same preconditions as the standard write cycle and still
+resolves and persists the QUALITY GATE command because later REFACTOR writes
+are expected. It does not run QUALITY GATE before the first CRITIQUE: no IMPL
+or REFACTOR write has happened yet, so there is nothing new to gate. After the
+first REFACTOR write, every loop follows REFACTOR -> QUALITY GATE -> CRITIQUE
+-> DEBATE until no findings remain, then refactor-only terminates at DONE.
+
 Treat QUALITY GATE as a numbered invariant checkpoint, not a new actor or a
 fixed independent pipeline stage. Attach it as a capped retry edge to the
-writer node—IMPL or REFACTOR—that most recently changed the tree. Enforce:
-**no CRITIQUE call may run on a tree that has not passed QUALITY GATE since
-the last write, or for which a currently-valid persisted user-confirmed
-opt-out exists.**
+writer node—IMPL or REFACTOR—that most recently changed the tree. In
+write-authorized modes, enforce this for CRITIQUE calls that follow an IMPL or
+REFACTOR write: **such a CRITIQUE call may run only after the tree has passed
+QUALITY GATE since that write or when a currently-valid persisted
+user-confirmed opt-out exists.** This invariant does not apply to review-only,
+which never writes and therefore has nothing to gate, or to refactor-only's
+first CRITIQUE, which also precedes any IMPL or REFACTOR write.
 
-0. **PRE-FLIGHT** (Claude, cheap) — At cycle entry, before PRE-FLIGHT makes
-   its own `PROJECT_CONTEXT.md` write and before node 2 (IMPL) is ever allowed
-   to run, verify `git status` is clean and the repo is on a non-`main`
-   branch. Here, "clean" means free of unrelated or pre-existing uncommitted
-   work at cycle entry; it does not prohibit this cycle's deliberate context
-   writes after the check. If either entry check fails, **abort with a clear
-   message to the user** instead of proceeding — do not let Codex's `--write`
-   calls land on top of existing uncommitted work or directly on `main`. This
-   is what makes the "always enter on a branch with a clean working tree"
-   rule under Risks an enforced check instead of a hope.
+0. **PRE-FLIGHT** (Claude, cheap) — The full requirements below apply to modes
+   that can reach IMPL or REFACTOR and therefore authorize writes. Review-only
+   mode instead uses the lighter PRE-FLIGHT variant defined in
+   `references/goal-templates.md`: it requires readable repo/scope and a
+   reachable Codex capable of producing the CRITIQUE report, but does not
+   require a clean tree, a non-`main` branch, a writable filesystem,
+   `PROJECT_CONTEXT.md` writes, or QUALITY GATE resolution/execution.
 
-   Also resolve the current feature's QUALITY GATE before IMPL. Read and
-   follow `references/quality-gate-detection.md`; it is part of this node,
-   not optional background. Resolve in this order: a still-valid resolution
-   already persisted for this feature; a safe local wrapper invoked by the
-   project's own PR/push CI; a command documented in contributing/dev docs;
-   a project-defined aggregator; then a bare ecosystem convention as a
-   candidate only. Never hardcode a command from another project.
+   For a write-authorized mode, at cycle entry, before PRE-FLIGHT makes its own
+   `PROJECT_CONTEXT.md` write and before node 2 (IMPL) is ever allowed to run,
+   verify `git status` is clean and the repo is on a non-`main` branch. Here,
+   "clean" means free of unrelated or pre-existing uncommitted work at cycle
+   entry; it does not prohibit this cycle's deliberate context writes after the
+   check. If either entry check fails, **abort with a clear message to the
+   user** instead of proceeding — do not let Codex's `--write` calls land on
+   top of existing uncommitted work or directly on `main`. This is what makes
+   the "always enter on a branch with a clean working tree" rule under Risks an
+   enforced check instead of a hope.
+
+   Also resolve the current feature's QUALITY GATE during PRE-FLIGHT for every
+   write-authorized mode: before IMPL in the standard cycle, and before the
+   initial CRITIQUE in refactor-only so the resolution is ready before any
+   possible REFACTOR. Read and follow
+   `references/quality-gate-detection.md`; it is part of this node, not optional
+   background. Resolve in this order: a still-valid resolution already
+   persisted for this feature; a safe local wrapper invoked by the project's
+   own PR/push CI; a command documented in contributing/dev docs; a
+   project-defined aggregator; then a bare ecosystem convention as a candidate
+   only. Never hardcode a command from another project.
 
    Autoselect only one unambiguous, high-confidence, locally executable CI
    wrapper that satisfies every safety condition in the reference. Otherwise
@@ -138,11 +178,12 @@ opt-out exists.**
    prior result**, under `### Quality gate` inside this feature's
    `PROJECT_CONTEXT.md` section; revalidate it cheaply after each write
    instead of redetecting it. If no usable candidate or explicit opt-out
-   exists, stop before IMPL. In autonomous `/goal` runs, treat this as an
-   escalation condition, never a silent skip. `PROJECT_CONTEXT.md` is
-   Claude's only writable artifact across the whole cycle: PRE-FLIGHT writes
-   this QUALITY GATE resolution metadata there, while SPEC writes the feature
-   contract there. Claude never edits implementation files.
+   exists, stop before IMPL or the initial refactor-only CRITIQUE. In
+   autonomous `/goal` runs, treat this as an escalation condition, never a
+   silent skip. `PROJECT_CONTEXT.md` is Claude's only writable artifact across
+   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata
+   there, while SPEC writes the feature contract there. Claude never edits
+   implementation files.
 
    Between the successful cycle-entry clean check and IMPL starting, the only
    expected tree changes are this cycle's own namespaced QUALITY GATE
@@ -174,12 +215,17 @@ opt-out exists.**
 
 3. **QUALITY GATE** (Claude runs mechanical checks; Codex fixes) — Revalidate
    the cached resolution, snapshot both `git status --porcelain=v1 -uall` and
-   `git diff HEAD --binary`, then run the resolved command with the exact cwd
-   and a timeout. QUALITY GATE contains only mechanical checks such as lint,
-   formatting, type checking, and build. It does not own functional tests or
-   acceptance criteria.
+   `git diff HEAD --binary`, then execute the persisted check-only command with
+   its exact cwd and a timeout. Mutating, auto-fix, and write-mode commands are
+   categorically ineligible as QUALITY GATE candidates; if no non-mutating
+   candidate exists, use the existing no-usable-candidate flow rather than
+   executing a mutating command. QUALITY GATE contains only mechanical checks
+   such as lint, formatting, type checking, and build. It does not own
+   functional tests or acceptance criteria. Follow
+   `references/quality-gate-detection.md` for the complete rejection,
+   resolution, and snapshot protocol.
 
-   When the currently-valid persisted resolution has `command: skipped`,
+   When the currently-valid persisted resolution has `mode: skipped`,
    QUALITY GATE is a no-op short-circuit: execute nothing, treat the gate as
    immediately satisfied for allowing CRITIQUE to proceed, and consume none
    of the 3-failure retry counter because there is nothing to fail.
@@ -231,6 +277,13 @@ opt-out exists.**
    Challenge the approach, design choices, and assumptions — don't just list
    defects.
    Read-only: do not fix anything, just report findings. --resume-last")
+
+   # Review-only CRITIQUE (single fresh read-only thread):
+   Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
+   [scope] directly, applying these user-supplied criteria if any: [criteria].
+   Do not require or assume a PROJECT_CONTEXT.md contract exists.
+   Challenge the approach, design choices, and assumptions — don't just list
+   defects. Read-only: do not fix anything, just report findings.")
    ```
    Return the findings verbatim first, without summarizing.
 
@@ -253,6 +306,12 @@ opt-out exists.**
    Without this step Codex self-reviews with no filter, and the cycle can
    oscillate or apply unnecessary changes — this is what distinguishes it
    from "Codex fixing itself" with no oversight.
+
+   That routing applies only to write-authorized cycles. In review-only mode,
+   all classified findings—valid, debatable (including the resolved
+   counterargument), and false-positive—go into the final report. The flow
+   terminates after DEBATE/report and no finding routes to node 6 REFACTOR,
+   because review-only never authorizes a write.
 
    **Claude may read, never edit, implementation files during triage.**
    "Claude never edits implementation files" (see intro) is about Edit/Write,

@@ -5,9 +5,12 @@ mechanical gate, and before every QUALITY GATE run to revalidate and execute
 that resolution safely. The gate covers lint, formatting, type checking, and
 build checks. Functional tests and acceptance criteria belong to VERIFY.
 
-The core invariant is: no CRITIQUE call may run on a tree that has not passed
-QUALITY GATE since the last write, or for which a currently-valid persisted
-user-confirmed opt-out exists.
+In write-authorized modes, the core invariant applies to CRITIQUE calls that
+follow an IMPL or REFACTOR write: such a CRITIQUE call may run only after the
+tree has passed QUALITY GATE since that write or when a currently-valid
+persisted user-confirmed opt-out exists. It does not apply to review-only,
+which never writes and therefore has nothing to gate, or to refactor-only's
+first CRITIQUE before any IMPL or REFACTOR write.
 
 ## Resolution order
 
@@ -51,15 +54,14 @@ before ranking it, autoselecting it, or presenting it as a safe default:
   whole resolved wrapper chain for flags or patterns such as `--write`,
   `--fix`, `-w`, and `--in-place`, and for tools known to write by default,
   such as a bare `prettier` invocation without `--check`. Such a command is
-  categorically ineligible by default and is never eligible for autoselection
-  or presentation as a safe default. Prefer or require the check-only variant
-  when one exists—for example, `prettier --check` instead of
-  `prettier --write`, or `eslint` without `--fix`. The only exception is a
-  project-specific need with no safe alternative, explicitly confirmed by the
-  user after both the mutation and an appropriate non-mutating follow-up
-  verification command have been identified. If either cannot be identified,
-  reject the mutating candidate; an opt-out is safer than treating an
-  unverifiable write as a passed gate.
+  categorically ineligible: never autoselect it, present it for confirmation,
+  or execute it as QUALITY GATE. Prefer or require the check-only variant when
+  one exists—for example, `prettier --check` instead of `prettier --write`, or
+  `eslint` without `--fix`. If a project's only available quality command is
+  mutating, treat that as no usable candidate: stop and ask the user to point
+  to a non-mutating check-only variant or provide a different command. The
+  existing explicit opt-out flow remains available if the user instead chooses
+  to skip the gate.
 
 Commands that mix mechanical checks with functional tests are handled by the
 existing split rule below: isolate a mechanical subcommand when it can be
@@ -114,6 +116,7 @@ feature's section in `PROJECT_CONTEXT.md`:
 
 ```markdown
 ### Quality gate
+- mode: check-only | skipped
 - command: <resolved command>
 - cwd: <resolved working directory>
 - provenance: <e.g. .github/workflows/ci.yml -> job "checks" -> package.json#scripts.quality>
@@ -122,15 +125,25 @@ feature's section in `PROJECT_CONTEXT.md`:
 ```
 
 An explicit user instruction to skip the quality gate for this project is
-allowed. Persist it with the same fields, using `command: skipped`,
-`cwd: <project root>`, `resolution: user-confirmed`, provenance that records
-the user's opt-out, and `definition sources: PROJECT_CONTEXT.md
+allowed. Persist it with the same fields, using `mode: skipped`, `command:
+skipped`, `cwd: <project root>`, `resolution: user-confirmed`, provenance that
+records the user's opt-out, and `definition sources: PROJECT_CONTEXT.md
 (user-confirmed opt-out)`. Never infer an opt-out from the absence of a
 candidate.
 
-Before each run, cheaply revalidate that the cached cwd, executable, script
-or target body, provenance path, and definition sources still match the
-files on disk. Re-resolve from the priority list only when that check fails.
+Before each run, cheaply revalidate the persisted resolution according to its
+mode:
+
+- **`mode: check-only`:** Validate the cached `command` and `cwd`, including
+  the executable, wrapper/script or target body, provenance path, and
+  definition sources, against the files on disk.
+- **`mode: skipped`:** Validate only that the persisted user-confirmed opt-out
+  still belongs to the current project and feature scope, and that its `cwd`
+  and provenance still make sense. Do not look for an executable, wrapper,
+  script, or target body: `command: skipped` has none by design.
+
+Re-resolve from the priority list when any field or check required for the
+persisted mode fails.
 
 If there is no usable candidate and no persisted explicit opt-out, stop and
 ask the user before IMPL runs. `git diff --check` may be extra hygiene, but it
@@ -139,8 +152,8 @@ to resolve is an escalation condition, not permission to degrade silently.
 
 ## Execute without hidden side effects
 
-First revalidate the persisted resolution. If it has `command: skipped` and
-the user-confirmed opt-out is still current, QUALITY GATE is a no-op
+First revalidate the persisted resolution. If it has `mode: skipped` and the
+user-confirmed opt-out is still current, QUALITY GATE is a no-op
 short-circuit: execute nothing, treat it as immediately satisfied for allowing
 CRITIQUE to proceed, and consume none of the 3-failure retry counter because
 there is nothing to fail.
@@ -149,40 +162,55 @@ For every non-skipped QUALITY GATE run:
 
 1. Revalidate the cached resolution.
 2. Confirm the cwd, executable, referenced scripts/targets, and target files.
-3. Snapshot both `git status --porcelain=v1 -uall` and
-   `git diff HEAD --binary` before execution. From that status snapshot, also
-   record a collision-resistant content hash (prefer SHA-256) for every path
-   already reported as untracked (`??`) at gate start. If hashing all of those
-   paths is impractical, record size and modification time as an explicitly
-   weaker fallback. Scope this identity map only to paths that were already
-   untracked; do not scan all repository content.
-4. Run the exact resolved local command in the persisted cwd with a timeout.
-5. Capture stdout, stderr, and exit code without rewriting them.
-6. Capture both Git snapshots again after execution. Re-hash the same
-   initially-untracked paths (or repeat the recorded fallback), and escalate
-   if any identity differs or can no longer be read. Also escalate on any
-   unexpected delta in either Git snapshot. The status comparison continues
-   to detect new or deleted untracked paths, while the identity comparison
-   detects in-place content changes whose `??` status is unchanged.
-7. Report stdout, stderr, and exit code verbatim.
+3. Snapshot both `git status --porcelain=v1 -uall` and `git diff HEAD
+   --binary` before execution. Independently enumerate the initially-untracked
+   paths with `git ls-files --others --exclude-standard -z`; consume its
+   NUL-delimited output directly rather than parsing `??` porcelain records,
+   whose quoting and special-character handling is unsuitable for recovering
+   arbitrary path bytes. Retain that exact path set for the after snapshot.
+4. Build one before-execution identity manifest for that path set:
+   - Use an `lstat`-equivalent check so a symlink is not followed. For every
+     regular file, hash its bytes once with SHA-256. GNU environments may use
+     `sha256sum --zero -- "$path"` and take the 64-hex-character digest without
+     reparsing the emitted filename; elsewhere use an equivalent SHA-256
+     implementation that returns the digest separately from the path.
+   - Encode each entry as the unambiguous NUL-delimited field sequence
+     `type NUL path NUL digest NUL`, preserving the enumeration order. Use a
+     stable type token such as `regular`, `symlink`, or `other`.
+   - Never hash a symlink target. Record symlinks and other non-regular files
+     with their actual type and an `UNHASHED` digest, then escalate before
+     executing the gate because this protocol cannot establish their content
+     identity. Also escalate if a path cannot be inspected or read.
+   - Default operational limits are 500 initially-untracked files and 50 MiB
+     total regular-file bytes. Treat these as adjustable safety defaults, not
+     project requirements. If either limit would be exceeded, stop before
+     hashing or executing and escalate with the observed counts and bytes.
+     A size-and-mtime manifest is permitted only after explicit user awareness
+     and approval of its weaker same-size/same-mtime detection; never downgrade
+     to it automatically.
+   Scope this manifest only to paths already untracked at gate start; do not
+   scan all repository content.
+5. Execute the exact resolved check-only command with a timeout.
+6. Capture its stdout, stderr, and exit code without rewriting them.
+7. After the command has run, capture both Git snapshots again. Build exactly
+   one after manifest by re-inspecting and re-hashing the same
+   initially-untracked paths under the same protocol, and escalate if any entry
+   differs or can no longer be inspected or read. Also escalate on any delta in
+   either Git snapshot. The status comparison continues to detect new or
+   deleted untracked paths, while the identity comparison detects in-place
+   content changes whose `??` status is unchanged. Each initially-untracked
+   regular file is therefore read at most twice per QUALITY GATE run—once
+   before the command and once after; do not re-hash it during unrelated
+   operations in that run.
+8. Report the command's stdout, stderr, and exit code verbatim.
 
-A user-confirmed mutating exception never passes QUALITY GATE merely because
-its command exits zero and produces only the expected delta. Its mutation is a
-new write event, so the gate remains pending for the now-mutated tree. Run the
-preidentified non-mutating verification command against that tree—prefer the
-same tool's check-only mode; otherwise use the explicitly agreed appropriate
-mechanical check—and apply the same snapshots and initially-untracked-content
-identity checks to that pass. This mechanically required follow-up does not
-consume a retry attempt merely by running. If it fails mechanically, that
-failure consumes one normal failed-run attempt in the current activation; if
-it is environmentally blocked, escalate immediately without consuming an
-attempt. If no suitable non-mutating follow-up can run, the mutating command
-cannot establish a pass.
+A successful check-only command and clean before/after safeguards mark the
+gate passed.
 
 The before/after `git diff` and `git status` comparison is a secondary
 defense-in-depth measure. It detects an unexpected mutation only after it has
-happened, so it never replaces the resolution-time rejection or explicit
-confirmation of mutating commands.
+happened, so it never replaces the resolution-time rejection of mutating
+commands.
 
 Never auto-install a missing dependency. Treat command-not-found, missing
 dependency, timeout, out-of-memory, and read-only-filesystem failures as

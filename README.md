@@ -38,11 +38,12 @@ with online but isn't.
 ## It's a loop, not a pipeline
 
 The cycle doesn't stop after one implement→review→fix pass. Every time Codex
-writes or fixes something, the mechanical QUALITY GATE must pass before
-critique runs on the *new* code — because a fix can introduce its own
+writes or fixes something, critique may run only on a tree that has passed
+the mechanical QUALITY GATE since that write, or for which a currently-valid
+persisted user-confirmed opt-out exists — because a fix can introduce its own
 problems, and because a first pass rarely catches everything. The outer loop
-keeps going until a condition you define is verifiably true: usually "no
-valid findings left, and functional tests pass."
+keeps going until a condition you define is verifiably true: usually "no valid
+findings left, and functional tests pass."
 
 The outer critique loop has two brakes, but the second one is conditional,
 not automatic:
@@ -90,14 +91,15 @@ per writer activation. That cap never expands based on apparent progress.
 
 QUALITY GATE is numbered so the invariant is visible, but it is not a new
 actor or an unconditional pipeline stage: it is a capped retry edge attached
-to whichever writer, IMPL or REFACTOR, just ran. No CRITIQUE call may run on
-a tree that has not passed QUALITY GATE since the last write. The gate is
-mechanical only (lint, formatting, type checking, and build), while VERIFY
-owns functional tests and acceptance criteria. A VERIFY failure returns to
-CRITIQUE for classification as an implementation defect, test defect,
-contract mismatch, or environmental failure; it never takes the fast
-mechanical-fixer route. If VERIFY cannot execute assertions at all because of
-an environmental block, the cycle escalates directly to the user.
+to whichever writer, IMPL or REFACTOR, just ran. CRITIQUE may run only on a
+tree that has passed QUALITY GATE since the last write, or for which a
+currently-valid persisted user-confirmed opt-out exists. The gate is mechanical
+only (lint, formatting, type checking, and build), while VERIFY owns functional
+tests and acceptance criteria. A VERIFY failure returns to CRITIQUE for
+classification as an implementation defect, test defect, contract mismatch,
+or environmental failure; it never takes the fast mechanical-fixer route. If
+VERIFY cannot execute assertions at all because of an environmental block, the
+cycle escalates directly to the user.
 
 Before IMPL, PRE-FLIGHT resolves the project's real local quality command and
 stores the resolution—not a previous result—inside the current feature's
