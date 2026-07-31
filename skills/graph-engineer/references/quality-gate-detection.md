@@ -240,3 +240,18 @@ a new activation with its own counter; a gate-failure retry does not.
 Mechanical failure routes directly back to the writer that opened the
 activation, never to CRITIQUE. Cap exhaustion escalates to the user with the
 verbatim command results and diagnostic classification.
+
+## Elevated-assurance metadata changes invalidate the snapshot
+
+If `### Critique assurance` (see `references/elevated-assurance.md`) is
+updated after IMPL because scope changed materially, treat that update the
+same as any other tree mutation to `PROJECT_CONTEXT.md`: the QUALITY GATE
+snapshot taken before that update no longer certifies the current state.
+Run a fresh, non-mutating QUALITY GATE pass before the next CRITIQUE call.
+This does not change the resolver order, candidate eligibility rules, retry
+cap, or persisted schema above — it only adds one more trigger for
+re-running the gate. Ordinary elevated-assurance runtime progress (which
+lens finished, whether canonicalization has happened yet) is never written
+to `PROJECT_CONTEXT.md` in the first place, so it cannot trigger this rule —
+only a change to the persisted `### Critique assurance` resolution itself
+does.

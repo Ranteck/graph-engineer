@@ -56,6 +56,38 @@ work just because they exist.
   design time — re-verify against your installed version, since community
   tooling around skills is young and moving.
 
+## Community design inputs whose full text was not independently verified
+
+The elevated-assurance mode
+(`skills/graph-engineer/references/elevated-assurance.md`) originated from a
+2026-07-30 design discussion prompted by two posts on X the user brought in:
+
+- Akshay Pachaar, "Graph Engineering Clearly Explained," dated 2026-07-25
+  ([x.com/akshay_pachaar/status/2081089131808243999](https://x.com/akshay_pachaar/status/2081089131808243999)).
+- angel/@angeldot_, "GRAPH ENGINEERING CON OPUS 5," dated 2026-07-25
+  ([x.com/angeldot_/status/2081061068516798931](https://x.com/angeldot_/status/2081061068516798931)).
+
+Claude retrieved and read both posts' full text directly (via browser, not
+`WebFetch` — X blocks that tool's scraping with an HTTP 402). Codex, in its
+own separate read-only design-discussion session, could not fetch the URLs
+itself and worked from a written description of the relevant pattern
+(diverse-lens/adversarial verification, "never let the same agent grade its
+own homework") rather than the raw post text — its recommendation should be
+read as evaluating that described pattern, not as independent confirmation
+that these specific posts say what they're summarized as saying here.
+
+Neither post is claimed to have originated the diverse-lens-verification
+pattern, and neither is treated as proof that this specific implementation is
+effective — that would overstate what a social-media post, however fully
+read, can establish. What's actually adopted here is narrower than and
+different from both posts' broader roadmaps: most of what they describe
+(parallel research fan-out, JS routers, per-node model staggering) does not
+apply to this skill's single-Codex-worker design and was explicitly rejected
+during the design discussion; only the "reviewer node with teeth, one agent
+writes" principle carried over, and even that was adopted with a
+**rejection** of the majority-vote survival rule both posts describe — see
+`elevated-assurance.md`'s "What this explicitly does not do" section for why.
+
 ## What is NOT official
 
 - **"Graph Engineering"** as a term is not used by Anthropic or OpenAI in any
@@ -89,6 +121,18 @@ documentation and issue tracker, not by inspecting its source. Re-verify
 against your own installed versions before relying on exact flag names or
 behavior, since plugin internals and third-party tooling can change between
 releases.
+
+The `--resume-last` "latest thread" semantics that `elevated-assurance.md`'s
+fan-in barrier depends on were verified directly by reading the plugin's own
+source, not inferred or taken from Codex's word: `sortJobsNewestFirst` in
+`plugins/codex/scripts/lib/job-control.mjs` sorts tracked jobs by `updatedAt`
+descending, and `resolveLatestTrackedTaskThread` in `codex-companion.mjs`
+resolves `--resume-last` to the newest one — there is no resume-by-thread-ID
+in the model-callable `task` interface. The same code path throws if another
+tracked task is still `queued` or `running`, which blocks a resumed call from
+running concurrently with lenses but does not by itself prevent a lens that
+finishes *after* canonicalization from becoming the next "latest" thread —
+which is exactly the gap the barrier and late-lens rule exist to close.
 
 Verified against `openai-codex` plugin **v1.0.6** specifically (same pin as
 `README.md` and `skills/graph-engineer/SKILL.md`).

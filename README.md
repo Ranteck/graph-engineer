@@ -83,7 +83,10 @@ the same underlying finding is restated with no net code change across 2
 consecutive CRITIQUE passes, stop and tell me instead of continuing — this
 floor applies even if you'd otherwise keep going. If no usable quality-gate
 resolution exists without an explicit opt-out, or one activation reaches 3
-failed QUALITY GATE runs, stop and tell me instead of continuing.
+failed QUALITY GATE runs, stop and tell me instead of continuing. If
+PRE-FLIGHT or SPEC's elevated-assurance risk-trigger evaluation matches and
+no decision from me is available, stop before IMPL and escalate instead of
+proceeding under either standard or elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -108,7 +111,9 @@ change across 2 consecutive CRITIQUE passes, stop and tell me instead of
 continuing — this floor applies even if you'd otherwise keep going. If no
 usable quality-gate resolution exists without an explicit opt-out, or one
 activation reaches 3 failed QUALITY GATE runs, stop and tell me instead of
-continuing.
+continuing. If PRE-FLIGHT or SPEC's elevated-assurance risk-trigger
+evaluation matches and no decision from me is available, stop before IMPL
+and escalate instead of proceeding under either standard or elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -117,6 +122,91 @@ precondition.
 
 More templates (with tests, without tests, refactor-only, review-only) in
 [`skills/graph-engineer/references/goal-templates.md`](skills/graph-engineer/references/goal-templates.md).
+
+### Elevated assurance (optional)
+
+**Standard single-thread CRITIQUE above is the default for every mode.**
+Elevated assurance is an opt-in variant: instead of one Codex critique
+thread, 3 independent fresh-thread lenses (correctness/contracts,
+integration/state/reproducibility, security/abuse/data-loss) review the
+implementation in parallel, Claude fans in and normalizes their findings,
+and a fresh "exit challenger" pass reviews the final artifact cold before
+VERIFY, rerunning fresh after any REFACTOR it itself triggers until one pass
+finds nothing. It never activates by default or silently — only on explicit
+request or after you confirm a matched risk trigger (auth/crypto/payments/
+migrations, irreversible operations, concurrency, public contract changes,
+a large diff, or a skipped QUALITY GATE). See
+[`skills/graph-engineer/references/elevated-assurance.md`](skills/graph-engineer/references/elevated-assurance.md)
+for the full protocol, including why the fan-in barrier below is not
+optional ceremony: the pinned Codex plugin resolves `--resume-last` to
+whichever tracked task was updated most recently, with no way to resume a
+specific thread by ID — so a lens that finishes after canonicalization
+starts could otherwise silently hijack the next resumed call.
+
+It costs more than standard CRITIQUE: at least 5 Codex calls in a clean
+cycle (3 lenses + canonicalization + exit challenger), plus the Claude
+context spent fanning those reports in — see [Limitations / Risks](#limitations--risks).
+
+<!-- elevated-write-goal:start -->
+```
+/goal Use graph-engineer's elevated-assurance mode (references/elevated-
+assurance.md) for [feature] in [file/folder or scope]: 3 fresh independent
+lenses (correctness-contracts, integration-state-reproducibility, security-
+abuse-data-loss) reviewed the implementation, Claude normalized and
+fan-in'd their findings with corroboration recorded as metadata only (never
+a fourth verdict, never a substitute for evidence), a fresh canonicalization
+call adopted that ledger, and — after DEBATE first reports no valid findings
+remaining — the most recent fresh exit challenger reviewed the final
+artifact cold with no valid findings before VERIFY (re-run fresh after any
+REFACTOR triggered by an earlier exit challenger pass, until one pass finds
+nothing against the then-current artifact). Persist mode: elevated in
+PROJECT_CONTEXT.md's
+### Critique assurance before IMPL. Code is written and fixed by Codex via
+graph-engineer only (Claude does not edit implementation files directly).
+Stop condition: [your verifiable criterion] AND no valid findings remain
+from any lens, the canonicalization pass, or the exit challenger (debatable
+ones get debated, not accepted blindly).
+Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
+canonicalization counts as one pass) and at most 13 total Codex review/
+debate calls for this activation — these are adjustable starting points, not
+derived constants; the structural floor is 5 calls (3 lenses +
+canonicalization + exit challenger) even in a clean cycle. If either cap is
+reached without satisfying the stop condition, stop and report the
+remaining findings instead of continuing. If the same underlying finding
+persists for 2 rounds in a row with no net code change, stop and tell me
+instead of continuing — this is the skill's own floor and applies even if
+you'd otherwise keep going.
+If a lens finishes after canonicalization began, apply the documented
+late-lens recovery from elevated-assurance.md: wait for every lens to reach
+a terminal state, merge the late result into the finding ledger, and start
+a replacement fresh canonicalization call instead of treating this alone as
+a stop condition. Recompute and compare the artifact-identity digest both
+before dispatching each lens/canonicalization/exit-challenger call and
+immediately after it completes; any mismatch means the reviewed artifact is
+no longer current. If the elevated-assurance resolution is missing or
+ambiguous, any required lens fails to return, that late-lens recovery
+itself cannot establish terminal state or ledger completeness, canonical
+latest-thread ownership still cannot be established after recovery, an
+artifact-identity digest mismatch is detected at any of those checkpoints, the
+digest cannot be constructed/recomputed or equality cannot be proven, the
+required exit challenger cannot run, or the persisted Codex review/debate
+call budget would be exceeded, stop and report instead of silently
+downgrading to standard CRITIQUE, skipping a required call, discarding the
+mismatch, or invoking --resume-last ambiguously. If no usable quality-gate resolution
+exists and no explicit opt-out was given, or one activation reaches the
+absolute cap of 3 failed QUALITY GATE runs, stop and report instead of
+continuing.
+At any node, stop and report immediately on an environmental failure
+(timeout, out-of-memory, read-only filesystem, or a missing command/
+dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,
+or no usable safety precondition.
+```
+<!-- elevated-write-goal:end -->
+
+For a read-only version (no REFACTOR/QUALITY GATE/VERIFY, no exit
+challenger — just a lens-attributed findings report), use the Elevated
+review-only template in
+[`goal-templates.md`](skills/graph-engineer/references/goal-templates.md).
 
 ## What is "graph engineering"?
 
@@ -247,6 +337,34 @@ This sub-loop happens entirely inside node 5, before anything reaches node
 6 — it's an extra round-trip to Codex per debatable finding, not just a
 triage checkbox.
 
+When [elevated assurance](#elevated-assurance-optional) is on, node 4 itself
+expands — the node count stays 8, this is not a 9th node:
+
+```
+[3 QUALITY GATE pass]
+          ↓
+[4 CRITIQUE: 3 fresh read-only lenses]
+          ↓
+Claude fan-in / normalize
+          ↓
+[4 CRITIQUE: fresh canonicalization task]
+          ↓
+[5 DEBATE] ── valid findings ──→ [6 REFACTOR] → [3 QUALITY GATE] → [4 CRITIQUE --resume-last]
+     │
+     └── no valid findings, exit pending
+              ↓
+        [4 CRITIQUE: fresh read-only exit challenger] ←───────────────┐
+              ↓                                                        │
+        [5 DEBATE] ── valid findings ──→ [6 REFACTOR] → [3 QUALITY GATE]
+                  └── no valid findings ──→ [7 VERIFY]
+```
+
+The exit challenger reruns fresh — back to the top of that loop — every time
+its own findings go through REFACTOR, until one pass finds nothing against
+the artifact as it stands at that point. Only the *last* pass's "no valid
+findings" clears the gate into VERIFY (or DONE in refactor-only, which has
+no VERIFY node).
+
 ## A hypothetical worked example
 
 This is an illustrative flow, not a transcript of an executed end-to-end run
@@ -312,6 +430,14 @@ CRITIQUE cap, anti-loop, QUALITY GATE, and environmental clauses apply too.]
    explicit responsibility instead of one model silently switching between
    author, reviewer, and judge.
 
+Elevated assurance (opt-in, see [Usage](#elevated-assurance-optional))
+deliberately trades away part of point 1 for a specific gap in point 2: the
+single CRITIQUE thread's `--resume-last` continuity is good for triage
+memory but can anchor it to its own earlier framing of a REFACTOR'd fix.
+Extra fresh lenses and a cold exit challenger cost more Codex calls and more
+Claude fan-in context — worth it only when the risk of a missed finding
+outweighs that cost, which is why it's risk-triggered rather than default.
+
 ## How it works
 
 | Graph role | Piece | Invocation |
@@ -322,6 +448,9 @@ CRITIQUE cap, anti-loop, QUALITY GATE, and environmental clauses apply too.]
 | Mechanical gate | project-local resolved command | local shell, cached per feature |
 | Evaluator (critiques) | same subagent, read-only | `Agent` tool, no `--write`, adversarial prompt |
 | Fixer | same subagent, resumed | `Agent` tool, `--resume-last --write` |
+| *Elevated lens sweep (opt-in)* | 3× same subagent, fresh, read-only | `Agent` tool ×3, no `--write`, `--fresh --wait`, in foreground |
+| *Elevated canonical critic (opt-in)* | same subagent, fresh then resumed | `Agent` tool, `--fresh --wait` once, then `--resume-last` |
+| *Elevated exit challenger (opt-in)* | same subagent, fresh, read-only, rerun until clean | `Agent` tool, no `--write`, `--fresh --wait`, gates VERIFY/DONE — reruns fresh after any REFACTOR it triggers |
 
 Every Codex interaction goes through the single `codex:codex-rescue`
 subagent — it's the only command in the plugin invocable directly by the
@@ -363,6 +492,20 @@ automates.
   repository.** It's a real, persistent file in your repo, namespaced per
   feature — not cleaned up automatically. Review it explicitly (and decide
   whether to commit it) before wrapping up the work.
+- **Elevated assurance costs more, even when it works perfectly.** A clean
+  elevated cycle still spends at least 5 Codex calls (3 lenses +
+  canonicalization + exit challenger) and the extra Claude context needed to
+  fan those reports in — undercutting the token-savings motivation in
+  [Why](#why) if it were ever treated as a default instead of a
+  risk-triggered exception, which is why it isn't one. Its 3 lenses share
+  the same underlying Codex model as standard CRITIQUE and are **not**
+  independent verification, just angle diversity plus reduced single-thread
+  anchoring. Getting the fan-in barrier ordering wrong can misdirect
+  `--resume-last` to a stray lens thread instead of the intended canonical
+  one — see
+  [`elevated-assurance.md`](skills/graph-engineer/references/elevated-assurance.md)
+  for why that barrier exists and is not optional. It must never activate
+  without your explicit authorization.
 
 ## Feedback / bug reports
 

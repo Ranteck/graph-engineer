@@ -32,7 +32,10 @@ code change across 2 consecutive CRITIQUE passes, stop and escalate to me
 immediately — whichever limit (2 or 3) is hit first wins. If no usable
 quality-gate resolution exists and no explicit opt-out was given, or one
 activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
-report instead of continuing.
+report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
+risk-trigger evaluation matches and no decision from me is available, stop
+before IMPL and escalate instead of proceeding under either standard or
+elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -63,7 +66,10 @@ this is the skill's own floor and applies even if you'd otherwise keep
 going. If no usable
 quality-gate resolution exists and no explicit opt-out was given, or one
 activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
-report instead of continuing.
+report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
+risk-trigger evaluation matches and no decision from me is available, stop
+before IMPL and escalate instead of proceeding under either standard or
+elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -84,7 +90,10 @@ across 2 consecutive CRITIQUE passes, stop and escalate immediately — that
 2-round floor wins over the 3-iteration cap whenever it triggers first. If no
 usable quality-gate resolution exists and no explicit opt-out was given, or
 one activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop
-and report instead of continuing.
+and report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
+risk-trigger evaluation matches and no decision from me is available, stop
+before IMPL and escalate instead of proceeding under either standard or
+elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -105,7 +114,10 @@ net code change across 2 consecutive CRITIQUE passes, stop and escalate
 right away instead of waiting for iteration 3. If no usable quality-gate
 resolution exists and no explicit opt-out was given, or one activation
 reaches the absolute cap of 3 failed QUALITY GATE runs, stop and report
-instead of continuing.
+instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
+risk-trigger evaluation matches and no decision from me is available, stop
+before IMPL and escalate instead of proceeding under either standard or
+elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -135,7 +147,11 @@ with no net code change across 2 consecutive CRITIQUE passes, stop and
 escalate to me instead of running further iterations. If no usable
 quality-gate resolution exists and no explicit opt-out was given, or one
 activation reaches the absolute cap of 3 failed QUALITY GATE runs, stop and
-report instead of continuing.
+report instead of continuing. If PRE-FLIGHT's elevated-assurance risk-trigger
+evaluation (there is no SPEC in this entry path, so PRE-FLIGHT's read is
+final) matches and no decision from me is available, stop before the first
+CRITIQUE and escalate instead of proceeding under either standard or
+elevated mode.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -166,10 +182,189 @@ PROJECT_CONTEXT.md or resolve/run QUALITY GATE. Stop and report only if an
 environmental failure actually prevents CRITIQUE from producing the report.
 ```
 
+## Elevated assurance — explicit opt-in, write-authorized
+
+Elevated assurance is the optional multi-lens CRITIQUE variant described in
+`references/elevated-assurance.md`. It is **never implied by any other
+template above** — use this one specifically, and only when you actually want
+3 independent fresh lenses, a canonicalization barrier, and a fresh exit
+challenger before VERIFY, in exchange for a materially higher Codex-call
+floor (at least 5 calls in a clean cycle) and extra Claude context spent on
+fan-in. This is the write-authorized template; substituting "review" into it
+is not equivalent — use the Elevated review-only template below for that.
+This template targets the standard write cycle (with SPEC). For refactor-only
+— which has no SPEC and no VERIFY node — use the dedicated Elevated
+refactor-only template instead of this one.
+
+<!-- elevated-write-goal:start -->
+```
+/goal Use graph-engineer's elevated-assurance mode (references/elevated-
+assurance.md) for [feature] in [file/folder or scope]: 3 fresh independent
+lenses (correctness-contracts, integration-state-reproducibility, security-
+abuse-data-loss) reviewed the implementation, Claude normalized and
+fan-in'd their findings with corroboration recorded as metadata only (never
+a fourth verdict, never a substitute for evidence), a fresh canonicalization
+call adopted that ledger, and — after DEBATE first reports no valid findings
+remaining — the most recent fresh exit challenger reviewed the final
+artifact cold with no valid findings before VERIFY (re-run fresh after any
+REFACTOR triggered by an earlier exit challenger pass, until one pass finds
+nothing against the then-current artifact). Persist mode: elevated in
+PROJECT_CONTEXT.md's
+### Critique assurance before IMPL. Code is written and fixed by Codex via
+graph-engineer only (Claude does not edit implementation files directly).
+Stop condition: [your verifiable criterion] AND no valid findings remain
+from any lens, the canonicalization pass, or the exit challenger (debatable
+ones get debated, not accepted blindly).
+Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
+canonicalization counts as one pass) and at most 13 total Codex review/
+debate calls for this activation — these are adjustable starting points, not
+derived constants; the structural floor is 5 calls (3 lenses +
+canonicalization + exit challenger) even in a clean cycle. If either cap is
+reached without satisfying the stop condition, stop and report the
+remaining findings instead of continuing. If the same underlying finding
+persists for 2 rounds in a row with no net code change, stop and tell me
+instead of continuing — this is the skill's own floor and applies even if
+you'd otherwise keep going.
+If a lens finishes after canonicalization began, apply the documented
+late-lens recovery from elevated-assurance.md: wait for every lens to reach
+a terminal state, merge the late result into the finding ledger, and start
+a replacement fresh canonicalization call instead of treating this alone as
+a stop condition. Recompute and compare the artifact-identity digest both
+before dispatching each lens/canonicalization/exit-challenger call and
+immediately after it completes; any mismatch means the reviewed artifact is
+no longer current. If the elevated-assurance resolution is missing or
+ambiguous, any required lens fails to return, that late-lens recovery
+itself cannot establish terminal state or ledger completeness, canonical
+latest-thread ownership still cannot be established after recovery, an
+artifact-identity digest mismatch is detected at any of those checkpoints, the
+digest cannot be constructed/recomputed or equality cannot be proven, the
+required exit challenger cannot run, or the persisted Codex review/debate
+call budget would be exceeded, stop and report instead of silently
+downgrading to standard CRITIQUE, skipping a required call, discarding the
+mismatch, or invoking --resume-last ambiguously. If no usable quality-gate resolution
+exists and no explicit opt-out was given, or one activation reaches the
+absolute cap of 3 failed QUALITY GATE runs, stop and report instead of
+continuing.
+At any node, stop and report immediately on an environmental failure
+(timeout, out-of-memory, read-only filesystem, or a missing command/
+dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,
+or no usable safety precondition.
+```
+<!-- elevated-write-goal:end -->
+
+## Elevated review-only
+
+No `--write`, same as the standard review-only template, but with the 3-lens
+sweep, fan-in, and one canonicalization call instead of a single reviewer.
+No REFACTOR, QUALITY GATE, VERIFY, or exit challenger — there is no final
+artifact distinct from what was just reviewed. Recommended reviewer budget:
+5 calls (3 lenses + canonicalization + at most 1 batched debatable
+reinjection). An incomplete lens sweep escalates; never silently degrade to
+reporting only one lens's output.
+
+```
+/goal Use graph-engineer's elevated-assurance review-only mode
+(references/elevated-assurance.md) over [scope]: 3 fresh independent lenses
+(correctness-contracts, integration-state-reproducibility, security-abuse-
+data-loss) reviewed it read-only, Claude normalized their findings with
+corroboration as metadata only (never a fourth verdict), and a fresh
+canonicalization call adopted that ledger to support at most one batched
+reinjection for debatable findings. I'm not authorizing --write in this
+cycle — the goal is a triaged, lens-attributed findings report (valid/
+debatable/false positive) so I can decide manually what to apply. Stop as
+soon as the report and triage are complete, without moving to REFACTOR.
+Recommended reviewer budget: 5 Codex calls total for this activation. If a
+lens finishes after canonicalization began, apply the documented late-lens
+recovery: wait for every lens to reach a terminal state, merge the late
+result into the finding ledger, and start a replacement fresh
+canonicalization call, rather than treating this alone as a stop condition.
+Recompute and compare the artifact-identity digest both before dispatching
+each lens/canonicalization call and immediately after it completes. If any
+of the 3 lenses fails to return, that recovery itself cannot establish
+terminal state or ledger completeness, an artifact-identity digest mismatch
+is detected at any of those checkpoints, or the digest cannot be
+constructed/recomputed or equality cannot be proven, stop and escalate
+instead of reporting on fewer than 3 lenses, discarding the mismatch, or
+resuming ambiguously.
+Use the review-only PRE-FLIGHT: require only readable repo/scope, reachable
+Codex, and a CRITIQUE invocation capable of producing the report. A dirty
+working tree, `main` branch, or read-only filesystem is allowed. Do not write
+PROJECT_CONTEXT.md or resolve/run QUALITY GATE. An artifact-identity digest
+mismatch is itself grounds to stop and report, not only an environmental
+failure that prevents CRITIQUE from producing the report.
+```
+
+## Elevated refactor-only
+
+Combines the refactor-only entry path (no SPEC, no VERIFY — see the
+Refactor-only template above) with elevated assurance. The one behavior that
+differs from the standard elevated write-authorized template: the exit
+challenger gates entry to **DONE**, not VERIFY, since refactor-only has no
+VERIFY node. This template supersedes the standard Refactor-only template's
+3-pass cap with elevated mode's own 5-pass cap and 13-call budget below —
+don't combine both caps into one run.
+
+```
+/goal Use graph-engineer's refactor-only entry path with elevated-assurance
+mode (references/elevated-assurance.md) over the current working tree
+(without --base): the first CRITIQUE traversal used 3 fresh independent
+lenses (correctness-contracts, integration-state-reproducibility, security-
+abuse-data-loss), Claude normalized and fan-in'd their findings with
+corroboration recorded as metadata only (never a fourth verdict, never a
+substitute for evidence), and a fresh canonicalization call adopted that
+ledger. Valid findings were applied by Codex through the sanctioned REFACTOR
+procedure. Persist mode: elevated in PROJECT_CONTEXT.md's
+### Critique assurance during PRE-FLIGHT (there is no SPEC in this entry
+path, so PRE-FLIGHT's evaluation is final). After DEBATE first reports no
+valid findings remaining, the most recent fresh exit challenger reviewed
+the final artifact cold with no valid findings before DONE (re-run fresh
+after any REFACTOR triggered by an earlier exit challenger pass, until one
+pass finds nothing against the then-current artifact).
+Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
+canonicalization counts as one pass) and at most 13 total Codex review/
+debate calls for this activation — these are adjustable starting points, not
+derived constants; the structural floor is 5 calls (3 lenses +
+canonicalization + exit challenger) even in a clean cycle. If either cap is
+reached without satisfying the stop condition, stop and report the
+remaining findings instead of continuing. If the same underlying finding
+persists for 2 rounds in a row with no net code change, stop and tell me
+instead of continuing — this is the skill's own floor and applies even if
+you'd otherwise keep going.
+If a lens finishes after canonicalization began, apply the documented
+late-lens recovery from elevated-assurance.md: wait for every lens to reach
+a terminal state, merge the late result into the finding ledger, and start
+a replacement fresh canonicalization call instead of treating this alone as
+a stop condition. Recompute and compare the artifact-identity digest both
+before dispatching each lens/canonicalization/exit-challenger call and
+immediately after it completes; any mismatch means the reviewed artifact is
+no longer current. If the elevated-assurance resolution is missing or
+ambiguous, any required lens fails to return, that late-lens recovery
+itself cannot establish terminal state or ledger completeness, canonical
+latest-thread ownership still cannot be established after recovery, an
+artifact-identity digest mismatch is detected at any of those checkpoints, the
+digest cannot be constructed/recomputed or equality cannot be proven, the
+required exit challenger cannot run, or the persisted Codex review/debate
+call budget would be exceeded, stop and report instead of silently
+downgrading to standard CRITIQUE, skipping a required call, discarding the
+mismatch, or invoking --resume-last ambiguously. If no usable quality-gate resolution exists and
+no explicit opt-out was given, or one activation reaches the absolute cap
+of 3 failed QUALITY GATE runs, stop and report instead of continuing. If
+PRE-FLIGHT's elevated-assurance risk-trigger evaluation matches and no
+decision from me is available, stop before the first CRITIQUE and escalate
+instead of proceeding under either standard or elevated mode.
+At any node, stop and report immediately on an environmental failure
+(timeout, out-of-memory, read-only filesystem, or a missing command/
+dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,
+or no usable safety precondition.
+```
+
 ## Notes
 
-- The iteration cap (3 above) is a recommendation, not a fixed value: raise
-  it for large/multi-file tasks, lower it to 1-2 for small changes.
+- The standard-mode iteration cap (3, used in the templates above) is a
+  recommendation, not a fixed value: raise it for large/multi-file tasks,
+  lower it to 1-2 for small changes. Elevated mode uses its own separate cap
+  (5 CRITIQUE passes / 13 calls) documented in `elevated-assurance.md` and
+  the elevated templates — don't conflate the two or combine them in one run.
 - The skill's anti-loop cutoff (2 consecutive CRITIQUE passes restating the
   same underlying finding with no net code change) is a separate, harder
   floor — it is not a recommendation and applies regardless of whatever
@@ -200,3 +395,11 @@ environmental failure actually prevents CRITIQUE from producing the report.
   Treat it as
   known-to-exist, not validated-safe, and prefer supervised `/goal` runs
   until it's been exercised deliberately.
+- Elevated assurance (the three templates above) is opt-in and never implied by
+  any of the standard/refactor-only/review-only templates elsewhere in this
+  file — don't hand-edit a standard template to add "3 lenses" without also
+  copying its full stop-clause set; use the dedicated elevated templates
+  instead so the permission and escalation contract stays complete. Its
+  5-call floor and 13-call/5-pass defaults are documented in
+  `references/elevated-assurance.md` as a structural minimum plus an
+  adjustable, unbenchmarked ceiling — not as a validated optimum.

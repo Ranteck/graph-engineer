@@ -125,6 +125,58 @@ PRE-FLIGHT (write-authorized) -> CRITIQUE (first pass, fresh thread, current tre
   -> CRITIQUE (second pass) -> DEBATE -> ... -> DONE (no findings remain)
 ```
 
+**Elevated assurance** is an optional, opt-in variant of node 4 (CRITIQUE) —
+it does not add a node and the diagrams above stay exactly as written. It
+replaces a single CRITIQUE call with an initial sweep of 3 independent fresh
+lenses plus a canonicalization call (still counted as one CRITIQUE pass), and
+gates entry to VERIFY (DONE in refactor-only) on a fresh "exit challenger"
+pass that reruns after any REFACTOR it itself triggers, until one pass finds
+nothing:
+
+```
+Elevated assurance expands node 4 only; the node count stays 8:
+
+[3 QUALITY GATE pass]
+          |
+          v
+[4 CRITIQUE: 3 fresh read-only lenses]
+          |
+          v
+Claude fan-in / normalize
+          |
+          v
+[4 CRITIQUE: fresh canonicalization task]
+          |
+          v
+[5 DEBATE]
+     | valid findings ---------------------> [6 REFACTOR]
+     |                                           |
+     |                                           v
+     |                                    [3 QUALITY GATE]
+     |                                           |
+     |                                           v
+     |                              [4 CRITIQUE: --resume-last]
+     |
+     + no valid findings, exit pending
+          |
+          v
+[4 CRITIQUE: fresh read-only exit challenger] <--------------------+
+          |                                                        |
+          v                                                        |
+[5 DEBATE]                                                         |
+     | valid findings -> [6 REFACTOR] -> [3 QUALITY GATE] ---------+
+     + no valid findings (this pass, current artifact) -> [7 VERIFY]
+```
+
+Only the exit challenger's *last* pass clears entry to VERIFY/DONE — an
+earlier pass that approved an artifact REFACTOR later changed does not.
+
+It never activates by default or silently. See
+`references/elevated-assurance.md` for the full activation triggers,
+persisted schema, lens definitions, fan-in barrier, and budgets — that
+reference is required reading before enabling this mode, not optional
+background.
+
 PRE-FLIGHT uses the same preconditions as the standard write cycle and still
 resolves and persists the QUALITY GATE command because later REFACTOR writes
 are expected. It does not run QUALITY GATE before the first CRITIQUE: no IMPL
@@ -181,22 +233,47 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    exists, stop before IMPL or the initial refactor-only CRITIQUE. In
    autonomous `/goal` runs, treat this as an escalation condition, never a
    silent skip. `PROJECT_CONTEXT.md` is Claude's only writable artifact across
-   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata
-   there, while SPEC writes the feature contract there. Claude never edits
-   implementation files.
+   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata,
+   and — see immediately below — writes `### Critique assurance` too, but
+   only in refactor-only (there is no SPEC there to defer to). In the
+   standard write cycle, PRE-FLIGHT only *evaluates* elevated-assurance
+   triggers here; it writes nothing for `### Critique assurance` yet — SPEC
+   is what finalizes and persists that resolution, once the actual contract
+   exists to evaluate triggers against. Claude never edits implementation
+   files.
+
+   Also make an initial elevated-assurance evaluation here: check explicit
+   user authorization and any risk trigger visible from the requested scope
+   before SPEC exists. Read `references/elevated-assurance.md` — it defines
+   the trigger list, the persisted `### Critique assurance` schema, and how
+   this initial read interacts with SPEC's re-evaluation below. In
+   refactor-only, since there is no SPEC, this PRE-FLIGHT evaluation is final:
+   persist `### Critique assurance` here from the requested scope and the
+   code already on disk.
 
    Between the successful cycle-entry clean check and IMPL starting, the only
    expected tree changes are this cycle's own namespaced QUALITY GATE
-   resolution and feature contract in `PROJECT_CONTEXT.md`. Recheck that
-   narrow window before IMPL and abort if any other path or unrelated delta
-   appears.
+   resolution, `Critique assurance` resolution, and feature contract in
+   `PROJECT_CONTEXT.md`. Recheck that narrow window before IMPL and abort if
+   any other path or unrelated delta appears.
 
 1. **SPEC** (Claude, cheap) — Write the component's contract into
    `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
    does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
    Claude's only writable artifact across the entire cycle: PRE-FLIGHT writes
    the `### Quality gate` resolution metadata there, and SPEC writes the
-   feature contract there. Claude never edits implementation files.
+   feature contract and finalizes `### Critique assurance` there (see
+   immediately below). Claude never edits implementation files.
+
+   In the standard write cycle (not refactor-only), re-evaluate the
+   elevated-assurance triggers here against the actual contract just written
+   — a trigger may only become visible once the contract exists (e.g. "touches
+   payments" is often clear only after SPEC). Before IMPL runs, persist the
+   final `### Critique assurance` resolution: `standard` unless the user
+   explicitly requested elevated mode or confirmed a matched trigger with
+   evidence. If a trigger matches and no user decision is available (e.g. an
+   unattended `/goal` run), stop before IMPL and escalate — never silently
+   elevate and never silently treat an unanswered trigger as declined.
 
    **Namespace by feature.** `PROJECT_CONTEXT.md` is shared across every
    cycle run in a repo, so each feature's contract must live under its own
@@ -256,7 +333,11 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    that—including one reached from a VERIFY failure—must pass
    `--resume-last`, so Codex retains memory of its own prior findings and of
    Claude's prior triage decisions, instead of restating findings that were
-   already ruled debatable or false-positive. If node 6 had to use its fresh
+   already ruled debatable or false-positive. **This blanket rule has
+   documented exceptions in elevated mode** — the initial 3 lens calls, the
+   canonicalization call after fan-in, and every exit-challenger call
+   (including reruns) are fresh, not resumed; see the elevated-assurance
+   paragraph below. If node 6 had to use its fresh
    REFACTOR fallback, `--resume-last` now targets that replacement thread;
    the first CRITIQUE after the fallback must also carry the required inline
    continuity summary described there:
@@ -309,6 +390,24 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    ```
    Return the findings verbatim first, without summarizing.
 
+   **Elevated assurance (opt-in variant).** When `### Critique assurance` in
+   `PROJECT_CONTEXT.md` (or, in review-only, the user's explicit request)
+   resolves to `mode: elevated`, the first CRITIQUE traversal of the cycle
+   uses 3 fresh independent lenses plus a fresh canonicalization call instead
+   of the single fresh-thread call above, and a fresh "exit challenger" call
+   gates entry to VERIFY (or DONE in refactor-only) — rerun fresh after any
+   REFACTOR the exit challenger itself triggers, until one pass finds no
+   valid findings against the then-current artifact; see the pass-accounting
+   note under Anti-loop cutoff. Every later resumed round in elevated mode
+   still uses `--resume-last` exactly as standard mode does.
+   This is not a separate node — it is entirely a node 4 variant. Follow
+   `references/elevated-assurance.md` in full before running it; it defines
+   the lens prompts, the mandatory fan-in barrier (required specifically
+   because the pinned plugin resolves `--resume-last` by newest `updatedAt`
+   with no resume-by-thread-ID), the late-lens recovery rule, the normalized
+   finding record, and the budgets. Do not activate elevated mode without a
+   persisted `### Critique assurance` resolution of `mode: elevated`.
+
    **Read-only is enforced, not just requested.** CRITIQUE's read-only
    behavior isn't a soft prompt instruction Codex could ignore — the
    underlying `codex-companion.mjs` script sets
@@ -331,6 +430,16 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    Without this step Codex self-reviews with no filter, and the cycle can
    oscillate or apply unnecessary changes — this is what distinguishes it
    from "Codex fixing itself" with no oversight.
+
+   **Elevated assurance fan-in.** When node 4 ran in elevated mode, first
+   normalize the 3 lenses' reports into one finding record per underlying
+   claim (see `references/elevated-assurance.md` for the exact fields) before
+   applying the three classifications above. Corroboration across lenses
+   (`corroboration_count`) is recorded as metadata only — it never becomes a
+   fourth verdict, never makes a single-lens finding invalid by default, and
+   never makes multi-lens agreement sufficient by itself without evidence.
+   Batch all `debatable` records from one pass into a single reinjection call
+   using stable finding IDs, rather than one round-trip per duplicate report.
 
    That routing applies only to write-authorized cycles. In review-only mode,
    all classified findings—valid, debatable (including the resolved
@@ -361,7 +470,11 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    There is no structural fix for this within a single-plugin design; the
    targeted Read/Grep verification above is a mitigation, not a cure. Do not
    present CRITIQUE's findings as independent verification — they are a
-   second pass by the same model, arbitrated by Claude.
+   second pass by the same model, arbitrated by Claude. Elevated assurance's
+   3 lenses (`references/elevated-assurance.md`) reduce single-thread
+   anchoring and add angle diversity, but they are still the same underlying
+   Codex model — do not present N-lens agreement as independent verification
+   either.
 
 6. **REFACTOR** (Codex fixes) —
    ```
@@ -400,9 +513,26 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    made specifically to fix a QUALITY GATE failure remains in the same
    activation and shares its existing counter.
 
+   **Elevated assurance canonical-thread continuity.** After node 4's
+   canonicalization call (elevated mode) or after the exit challenger runs,
+   that call becomes the new latest/canonical thread. If a REFACTOR follows
+   either of those without an intervening ordinary `--resume-last` CRITIQUE
+   round, build the same kind of concise inline continuity summary described
+   above for the fresh-fallback case — the canonical/exit thread did not see
+   every prior lens finding — and include it in the REFACTOR prompt.
+
 7. **VERIFY** (Claude, judgment required) — Run functional tests and evaluate
    the acceptance criteria only after DEBATE has no valid findings awaiting
    REFACTOR. Keep lint, formatting, type checking, and build in QUALITY GATE.
+
+   In elevated mode, do not enter VERIFY until the **most recent** exit
+   challenger pass (see `references/elevated-assurance.md`) reported no
+   valid findings against the artifact currently about to enter VERIFY. If
+   an exit challenger's findings went through REFACTOR, that changed the
+   artifact the exit challenger approved — route back to node 4 for another
+   fresh exit challenger pass instead of proceeding to VERIFY on the strength
+   of the earlier pass. Refactor-only has no VERIFY node; the same gate
+   applies to entering DONE instead.
 
    If VERIFY executes its assertions and fails, always return to node 4, then
    instruct CRITIQUE to classify the root cause as exactly one of:
@@ -433,6 +563,25 @@ Because CRITIQUE is now stateful via `--resume-last` (see node 4), Codex
 itself should rarely repeat a finding it already discussed — but "rarely"
 is not "never," so this judgment call must still be made by Claude on every
 loop-back to node 4, not assumed away.
+
+**Elevated-assurance pass accounting.** A CRITIQUE pass is one completed
+traversal of node 4 that produces one normalized finding set for node 5. On
+the initial elevated traversal, the 3 fresh lens calls, Claude's fan-in, and
+the fresh canonicalization call together count as **one** CRITIQUE pass, not
+four. Each later resumed canonical review counts as one pass. Each fresh exit
+challenger pass counts as one additional CRITIQUE pass — there may be more
+than one if an exit challenger's own findings go through REFACTOR and
+require a re-run (see `references/elevated-assurance.md`). DEBATE reinjections
+stay inside node 5 and do not create CRITIQUE passes. Apply the two-pass
+anti-loop comparison only to the normalized finding sets emitted by
+consecutive passes; duplicate lens reports inside one pass can neither
+trigger nor satisfy the cutoff. Separately from pass accounting, every Codex
+task invocation — each lens, canonicalization, resumed review, exit
+challenger, and DEBATE reinjection — consumes one unit of the persisted
+elevated-assurance model-call budget (see `references/elevated-assurance.md`
+for the derived floor and the adjustable default ceiling). Budget exhaustion
+is an escalation condition; it is never permission to skip a required lens,
+canonicalization, or exit challenge.
 
 **Reconciling with the iteration cap in `references/goal-templates.md`:**
 this 2-round cutoff is this skill's own hard floor — it applies regardless
@@ -474,3 +623,11 @@ variant).
   REFACTOR.
 - `PROJECT_CONTEXT.md` is per-repo, not global; never write to the user's
   global Claude Code instructions file.
+- Elevated assurance (`references/elevated-assurance.md`) is opt-in, but when
+  active it costs at least 5 Codex calls in a clean cycle and consumes extra
+  Claude context during fan-in — it undercuts the token-savings motivation
+  above if treated as a default rather than a risk-triggered exception. Its
+  N lenses share the same underlying Codex model and are not independent
+  verification. Getting its fan-in barrier ordering wrong can misdirect
+  `--resume-last` to the wrong thread; it must never activate without
+  explicit user authorization.
