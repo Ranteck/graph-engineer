@@ -272,6 +272,29 @@ per writer activation. That cap never expands based on apparent progress.
 
 ## The cycle (8 nodes)
 
+At a glance — the state machine this skill actually runs (detailed trace
+below):
+
+```mermaid
+flowchart TD
+    PF["0 PRE-FLIGHT<br/>Claude: branch + gate resolution"] --> SPEC["1 SPEC<br/>Claude: contract → PROJECT_CONTEXT.md"]
+    SPEC --> IMPL["2 IMPL<br/>Codex --write"]
+    IMPL --> QG{"3 QUALITY GATE<br/>mechanical checks"}
+    QG -- "fail (max 3/activation)" --> IMPL
+    QG -- pass --> CRIT["4 CRITIQUE<br/>Codex, read-only"]
+    CRIT --> DEBATE{"5 DEBATE<br/>Claude triages"}
+    DEBATE -- valid --> REFACTOR["6 REFACTOR<br/>Codex --resume-last --write"]
+    DEBATE -- debatable --> CRIT
+    REFACTOR --> QG
+    DEBATE -- "no findings" --> VERIFY{"7 VERIFY<br/>functional tests"}
+    VERIFY -- fail --> CRIT
+    VERIFY -- pass --> DONE(["DONE"])
+```
+
+Every node is Claude or Codex, never a third agent. Every edge is state
+written to `PROJECT_CONTEXT.md`, not implicit memory — that's what makes
+this a graph/state-machine rather than a single long conversation.
+
 ```
 [0 PRE-FLIGHT] Claude checks branch, worktree, and gate resolution
       ↓
@@ -338,7 +361,32 @@ This sub-loop happens entirely inside node 5, before anything reaches node
 triage checkbox.
 
 When [elevated assurance](#elevated-assurance-optional) is on, node 4 itself
-expands — the node count stays 8, this is not a 9th node:
+expands — the node count stays 8, this is not a 9th node. This is the one
+real fan-out/join in the whole cycle; everything else above is strictly
+sequential with a return edge:
+
+```mermaid
+flowchart TD
+    QGpass["3 QUALITY GATE pass"] --> L1["Lens: correctness-contracts"]
+    QGpass --> L2["Lens: integration-state-repro"]
+    QGpass --> L3["Lens: security-abuse-data-loss"]
+    L1 --> FANIN["Claude: fan-in / normalize<br/>(corroboration = metadata only)"]
+    L2 --> FANIN
+    L3 --> FANIN
+    FANIN --> CANON["4 CRITIQUE: fresh canonicalization"]
+    CANON --> DEBATE2{"5 DEBATE"}
+    DEBATE2 -- valid --> REFACTOR2["6 REFACTOR"] --> QG2["3 QUALITY GATE"] --> RESUME["4 CRITIQUE --resume-last"]
+    RESUME --> DEBATE2
+    DEBATE2 -- "no findings" --> EXIT["4 CRITIQUE: fresh exit challenger"]
+    EXIT --> DEBATE3{"5 DEBATE"}
+    DEBATE3 -- valid --> REFACTOR3["6 REFACTOR"] --> QG3["3 QUALITY GATE"] --> EXIT
+    DEBATE3 -- "no findings" --> VERIFY2["7 VERIFY"]
+```
+
+The 3 lenses run independently, in parallel, never seeing each other's
+output — Claude is the only place they converge. The exit challenger
+re-runs cold (fresh thread, no ledger) after any REFACTOR it triggers,
+until one pass finds nothing.
 
 ```
 [3 QUALITY GATE pass]
