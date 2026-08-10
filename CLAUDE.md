@@ -22,7 +22,12 @@ skills/graph-engineer/
 must stay consistent with `skills/graph-engineer/SKILL.md` — they describe the same
 8-node cycle from two angles (marketing/usage vs. operational instructions). When
 editing one, check whether the other needs a matching update (e.g. node numbering,
-flag names, the anti-loop cutoff wording).
+flag names, the anti-loop cutoff wording). Their *section order* is deliberately
+different, though: `README.md` is ordered for reading (what is this → what does
+the cycle look like → how do I use it → what can go wrong), while `SKILL.md` is
+ordered for execution (node 0 through node 7 in sequence). Don't treat a
+reordering of one as something that needs mirroring in the other — only the
+claims need to match, not the layout.
 
 ## Working in this repo
 
@@ -90,10 +95,12 @@ Related invariants worth preserving when editing `SKILL.md`:
   explicit stop/escalate clause. Don't describe it as an unconditional guarantee.
 - The cycle is exactly 8 nodes; elevated assurance is a variant of node 4, never a
   9th node. Don't let its diagrams or wording imply a new node.
-- The elevated write-authorized `/goal` prompt in `README.md` and the matching one in
-  `goal-templates.md` are wrapped in `<!-- elevated-write-goal:start/end -->` markers
-  specifically so their contents can be diffed for parity — keep them byte-identical
-  between the markers when editing either.
+- The elevated write-authorized `/goal` prompt lives in exactly one place now:
+  `goal-templates.md`, still wrapped in `<!-- elevated-write-goal:start/end -->`
+  markers. `README.md` does not duplicate it — it links to
+  `elevated-assurance.md` and `goal-templates.md` instead of embedding the
+  template. Don't re-add a copy of the prompt to `README.md`; if the template
+  needs to change, edit it once in `goal-templates.md`.
 
 ## Terminology to get right
 
