@@ -127,8 +127,8 @@ precondition.
 ## Refactor-only (no new feature, existing code)
 
 Follow the refactor-only entry path defined in `../SKILL.md`:
-PRE-FLIGHT (write-authorized, with the standard cycle's preconditions) ->
-first fresh-thread CRITIQUE over the current tree -> DEBATE -> REFACTOR when
+PRE-FLIGHT (write-authorized, with the full 8-node write cycle's preconditions)
+-> first fresh-thread CRITIQUE over the current tree -> DEBATE -> REFACTOR when
 findings are valid -> QUALITY GATE -> second CRITIQUE -> DEBATE, repeating
 until no findings remain -> DONE. PRE-FLIGHT resolves and persists the QUALITY
 GATE command because REFACTOR writes are expected, but the gate does not run
@@ -185,30 +185,32 @@ environmental failure actually prevents CRITIQUE from producing the report.
 ## Elevated assurance — explicit opt-in, write-authorized
 
 Elevated assurance is the optional multi-lens CRITIQUE variant described in
-`references/elevated-assurance.md`. It is **never implied by any other
+`elevated-assurance.md`. It is **never implied by any other
 template above** — use this one specifically, and only when you actually want
 3 independent fresh lenses, a canonicalization barrier, and a fresh exit
 challenger before VERIFY, in exchange for a materially higher Codex-call
-floor (at least 5 calls in a clean cycle) and extra Claude context spent on
-fan-in. This is the write-authorized template; substituting "review" into it
-is not equivalent — use the Elevated review-only template below for that.
-This template targets the standard write cycle (with SPEC). For refactor-only
-— which has no SPEC and no VERIFY node — use the dedicated Elevated
-refactor-only template instead of this one.
+floor (5 review calls — 6 total in a clean run of the full 8-node write
+cycle, counting IMPL) and extra Claude context spent on fan-in. This is the
+write-authorized template; substituting "review" into it is not equivalent —
+use the Elevated review-only template below for that.
+This template targets the full 8-node write cycle (with SPEC). For
+refactor-only — which has no SPEC and no VERIFY node — use the dedicated
+Elevated refactor-only template instead of this one.
 
 <!-- elevated-write-goal:start -->
 ```
-/goal Use graph-engineer's elevated-assurance mode (references/elevated-
-assurance.md) for [feature] in [file/folder or scope]: 3 fresh independent
-lenses (correctness-contracts, integration-state-reproducibility, security-
-abuse-data-loss) reviewed the implementation, Claude normalized and
-fan-in'd their findings with corroboration recorded as metadata only (never
-a fourth verdict, never a substitute for evidence), a fresh canonicalization
-call adopted that ledger, and — after DEBATE first reports no valid findings
-remaining — the most recent fresh exit challenger reviewed the final
-artifact cold with no valid findings before VERIFY (re-run fresh after any
-REFACTOR triggered by an earlier exit challenger pass, until one pass finds
-nothing against the then-current artifact). Persist mode: elevated in
+/goal Use graph-engineer's elevated-assurance mode
+(references/elevated-assurance.md) for [feature] in [file/folder or scope]:
+3 fresh independent lenses (correctness-contracts, integration-state-
+reproducibility, security-abuse-data-loss) reviewed the implementation,
+Claude normalized and fan-in'd their findings with corroboration recorded as
+metadata only (never a fourth verdict, never a substitute for evidence), a
+fresh canonicalization call adopted that ledger, and — after DEBATE first
+reports no valid findings remaining — the most recent fresh exit challenger
+reviewed the final artifact cold with no valid findings before VERIFY
+(re-run fresh after any REFACTOR triggered by an earlier exit challenger
+pass, until one pass finds nothing against the then-current artifact).
+Persist mode: elevated in
 PROJECT_CONTEXT.md's
 ### Critique assurance before IMPL. Code is written and fixed by Codex via
 graph-engineer only (Claude does not edit implementation files directly).
@@ -218,22 +220,22 @@ ones get debated, not accepted blindly).
 Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
 canonicalization counts as one pass) and at most 13 total Codex review/
 debate calls for this activation — these are adjustable starting points, not
-derived constants; the structural floor is 5 calls (3 lenses +
-canonicalization + exit challenger) even in a clean cycle. If either cap is
-reached without satisfying the stop condition, stop and report the
-remaining findings instead of continuing. If the same underlying finding
-persists for 2 rounds in a row with no net code change, stop and tell me
-instead of continuing — this is the skill's own floor and applies even if
-you'd otherwise keep going.
+derived constants; the structural review floor is 5 calls (3 lenses +
+canonicalization + exit challenger), while the clean total floor is 6 after
+counting IMPL. If either cap is reached without satisfying the stop
+condition, stop and report the remaining findings instead of continuing. If
+the same underlying finding persists for 2 rounds in a row with no net code
+change, stop and tell me instead of continuing — this is the skill's own
+floor and applies even if you'd otherwise keep going.
 If a lens finishes after canonicalization began, apply the documented
-late-lens recovery from elevated-assurance.md: wait for every lens to reach
-a terminal state, merge the late result into the finding ledger, and start
-a replacement fresh canonicalization call instead of treating this alone as
-a stop condition. Recompute and compare the artifact-identity digest both
-before dispatching each lens/canonicalization/exit-challenger call and
-immediately after it completes; any mismatch means the reviewed artifact is
-no longer current. If the elevated-assurance resolution is missing or
-ambiguous, any required lens fails to return, that late-lens recovery
+late-lens recovery from references/elevated-assurance.md: wait for every
+lens to reach a terminal state, merge the late result into the finding ledger,
+and start a replacement fresh canonicalization call instead of treating
+this alone as a stop condition. Recompute and compare the artifact-identity
+digest both before dispatching each lens/canonicalization/exit-challenger
+call and immediately after it completes; any mismatch means the reviewed
+artifact is no longer current. If the elevated-assurance resolution is
+missing or ambiguous, any required lens fails to return, that late-lens recovery
 itself cannot establish terminal state or ledger completeness, canonical
 latest-thread ownership still cannot be established after recovery, an
 artifact-identity digest mismatch is detected at any of those checkpoints, the
@@ -254,13 +256,14 @@ or no usable safety precondition.
 
 ## Elevated review-only
 
-No `--write`, same as the standard review-only template, but with the 3-lens
-sweep, fan-in, and one canonicalization call instead of a single reviewer.
+No `--write`, same as the standard-mode review-only template, but with the
+3-lens sweep, fan-in, and one canonicalization call instead of a single
+reviewer.
 No REFACTOR, QUALITY GATE, VERIFY, or exit challenger — there is no final
 artifact distinct from what was just reviewed. Recommended reviewer budget:
-5 calls (3 lenses + canonicalization + at most 1 batched debatable
-reinjection). An incomplete lens sweep escalates; never silently degrade to
-reporting only one lens's output.
+5 calls (the clean structural floor is 4: 3 lenses + canonicalization, plus
+at most 1 batched debatable reinjection). An incomplete lens sweep escalates;
+never silently degrade to reporting only one lens's output.
 
 ```
 /goal Use graph-engineer's elevated-assurance review-only mode
@@ -273,8 +276,10 @@ reinjection for debatable findings. I'm not authorizing --write in this
 cycle — the goal is a triaged, lens-attributed findings report (valid/
 debatable/false positive) so I can decide manually what to apply. Stop as
 soon as the report and triage are complete, without moving to REFACTOR.
-Recommended reviewer budget: 5 Codex calls total for this activation. If a
-lens finishes after canonicalization began, apply the documented late-lens
+Clean structural floor: 4 Codex review/total calls (3 lenses +
+canonicalization). Recommended reviewer budget: 5 Codex calls total for this
+activation, allowing at most 1 batched debatable reinjection. If a lens
+finishes after canonicalization began, apply the documented late-lens
 recovery: wait for every lens to reach a terminal state, merge the late
 result into the finding ledger, and start a replacement fresh
 canonicalization call, rather than treating this alone as a stop condition.
@@ -298,11 +303,11 @@ failure that prevents CRITIQUE from producing the report.
 
 Combines the refactor-only entry path (no SPEC, no VERIFY — see the
 Refactor-only template above) with elevated assurance. The one behavior that
-differs from the standard elevated write-authorized template: the exit
+differs from the full 8-node write cycle's elevated template: the exit
 challenger gates entry to **DONE**, not VERIFY, since refactor-only has no
-VERIFY node. This template supersedes the standard Refactor-only template's
-3-pass cap with elevated mode's own 5-pass cap and 13-call budget below —
-don't combine both caps into one run.
+VERIFY node. This template supersedes the standard-mode Refactor-only
+template's 3-pass cap with elevated mode's own 5-pass cap and 13-call budget
+below — don't combine both caps into one run.
 
 ```
 /goal Use graph-engineer's refactor-only entry path with elevated-assurance
@@ -323,7 +328,7 @@ pass finds nothing against the then-current artifact).
 Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
 canonicalization counts as one pass) and at most 13 total Codex review/
 debate calls for this activation — these are adjustable starting points, not
-derived constants; the structural floor is 5 calls (3 lenses +
+derived constants; the structural review/total floor is 5 calls (3 lenses +
 canonicalization + exit challenger) even in a clean cycle. If either cap is
 reached without satisfying the stop condition, stop and report the
 remaining findings instead of continuing. If the same underlying finding
@@ -331,14 +336,14 @@ persists for 2 rounds in a row with no net code change, stop and tell me
 instead of continuing — this is the skill's own floor and applies even if
 you'd otherwise keep going.
 If a lens finishes after canonicalization began, apply the documented
-late-lens recovery from elevated-assurance.md: wait for every lens to reach
-a terminal state, merge the late result into the finding ledger, and start
-a replacement fresh canonicalization call instead of treating this alone as
-a stop condition. Recompute and compare the artifact-identity digest both
-before dispatching each lens/canonicalization/exit-challenger call and
-immediately after it completes; any mismatch means the reviewed artifact is
-no longer current. If the elevated-assurance resolution is missing or
-ambiguous, any required lens fails to return, that late-lens recovery
+late-lens recovery from references/elevated-assurance.md: wait for every
+lens to reach a terminal state, merge the late result into the finding ledger,
+and start a replacement fresh canonicalization call instead of treating
+this alone as a stop condition. Recompute and compare the artifact-identity
+digest both before dispatching each lens/canonicalization/exit-challenger
+call and immediately after it completes; any mismatch means the reviewed
+artifact is no longer current. If the elevated-assurance resolution is
+missing or ambiguous, any required lens fails to return, that late-lens recovery
 itself cannot establish terminal state or ledger completeness, canonical
 latest-thread ownership still cannot be established after recovery, an
 artifact-identity digest mismatch is detected at any of those checkpoints, the
@@ -396,10 +401,12 @@ or no usable safety precondition.
   known-to-exist, not validated-safe, and prefer supervised `/goal` runs
   until it's been exercised deliberately.
 - Elevated assurance (the three templates above) is opt-in and never implied by
-  any of the standard/refactor-only/review-only templates elsewhere in this
-  file — don't hand-edit a standard template to add "3 lenses" without also
-  copying its full stop-clause set; use the dedicated elevated templates
-  instead so the permission and escalation contract stays complete. Its
-  5-call floor and 13-call/5-pass defaults are documented in
-  `references/elevated-assurance.md` as a structural minimum plus an
-  adjustable, unbenchmarked ceiling — not as a validated optimum.
+  any of the full 8-node write-cycle, refactor-only, or review-only templates
+  elsewhere in this file — don't hand-edit a standard-mode template to add "3
+  lenses" without also copying its full stop-clause set; use the dedicated
+  elevated templates instead so the permission and escalation contract stays
+  complete. The clean structural floors are 5 review calls / 6 total for the
+  full 8-node write cycle, 5 review/total for refactor-only, and 4
+  review/total for review-only. The 13-call/5-pass defaults are documented in
+  `elevated-assurance.md` as adjustable, unbenchmarked ceilings — not as a
+  validated optimum.

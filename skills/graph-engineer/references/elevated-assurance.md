@@ -4,7 +4,7 @@ Elevated assurance is an **optional variant of node 4 (CRITIQUE)** — not a new
 node. It never activates by default and never activates silently: it requires
 either an explicit user request or user confirmation after Claude reports a
 matched risk trigger with concrete evidence. Standard single-thread CRITIQUE
-(the behavior described in `SKILL.md`) remains what every cycle uses unless
+(the behavior described in `../SKILL.md`) remains what every cycle uses unless
 this reference's activation rule fires and the user agrees.
 
 ## Why this exists
@@ -33,7 +33,7 @@ not do" below.
   single lens found with concrete evidence is exactly as valid as one three
   lenses found. Never adopt "majority of lenses agree" as a classification
   tier alongside valid/debatable/false-positive — it stays exactly the three
-  verdicts defined in `SKILL.md` node 5.
+  verdicts defined in `../SKILL.md` node 5.
 - It does not turn N same-model Codex lenses into independent verification.
   They reduce single-thread anchoring and add angle diversity, but they share
   the same underlying model and its blind spots. Do not present a multi-lens
@@ -75,7 +75,7 @@ measured statistic. "This seems risky" is not evidence and does not qualify.
 
 ### Decision timing
 
-- **Standard write cycle:** PRE-FLIGHT evaluates explicit authorization and
+- **Full 8-node write cycle:** PRE-FLIGHT evaluates explicit authorization and
   any scope-level trigger visible before SPEC. At the end of SPEC, once the
   contract exists, Claude re-evaluates the triggers against the actual
   contract. Before IMPL runs, persist a final `standard` or `elevated`
@@ -116,8 +116,8 @@ alongside (not replacing) `### Quality gate`:
 - lens count: 1 | 3
 - lens set: standard | correctness-contracts; integration-state-reproducibility; security-abuse-data-loss
 - exit challenger: disabled | required-before-verify-or-done-rerun-until-clean
-- CRITIQUE pass cap: 3 | 5
-- Codex review/debate call budget: not-applicable | 13
+- CRITIQUE pass cap: <positive integer; default 3 standard / 5 elevated>
+- Codex review/debate call budget: not-applicable (standard) | <positive integer; default 13 elevated>
 ```
 
 Only the final resolution belongs here — this is not a runtime progress log.
@@ -134,12 +134,16 @@ GATE before CRITIQUE resumes (see the amendment in
 
 ### Budgets: what's derived vs. what's a guess
 
-- **Floor of 5 Codex calls in a clean elevated cycle is structural, not a
-  guess**: 3 lenses + 1 canonicalization + 1 exit challenger, when the exit
-  challenger's first pass already reports no valid findings. If elevated
-  assurance activates, expect at least this many Codex calls regardless of
-  tuning. If the exit challenger itself finds a valid defect, its REFACTOR
-  and the required re-run exit challenger add further calls beyond this
+- **The clean elevated call floors are structural, not guesses:** the full
+  8-node write cycle has 5 Codex review calls — 6 Codex calls total counting
+  IMPL: 3 lenses + 1 canonicalization + 1 exit challenger are the review
+  calls. Clean refactor-only has the same 5-call review/total floor because
+  it has no IMPL.
+  Clean review-only instead has a 4-call review/total floor (3 lenses + 1
+  canonicalization) because it has neither IMPL nor an exit challenger; its
+  recommended 5-call budget allows at most 1 batched debatable reinjection.
+  If the exit challenger itself finds a valid defect, its REFACTOR and the
+  required re-run exit challenger add further calls beyond the applicable
   floor — this is expected, not a budget violation, and is exactly why the
   cap below exists as a real ceiling rather than a formality.
 - **`CRITIQUE pass cap: 5` and `Codex review/debate call budget: 13` are
@@ -151,7 +155,7 @@ GATE before CRITIQUE resumes (see the amendment in
   Whichever number a user's `/goal` states overrides these defaults; if none
   is stated, these are what apply.
 - The anti-loop cutoff (see the "Elevated-assurance pass accounting" addition
-  in `SKILL.md`'s Anti-loop cutoff section) can still stop the cycle earlier
+  in `../SKILL.md`'s Anti-loop cutoff section) can still stop the cycle earlier
   than either budget.
 
 ## The three lenses
@@ -190,14 +194,15 @@ no snapshot at all (see `quality-gate-detection.md`'s no-op short-circuit)
 and must never be treated as a baseline source — for a skipped gate, and for
 every other capture point, compute the digest fresh from disk:
 
-- **Standard cycle with a `mode: check-only` gate that just passed:** use its
-  fresh after-execution snapshot as the baseline for the lens dispatch.
-- **Standard cycle with `mode: skipped`, and refactor-only's initial sweep**
-  (no preceding QUALITY GATE run — see `SKILL.md`'s refactor-only entry
-  path): compute the digest fresh, specifically for this purpose,
+- **Full 8-node write cycle with a `mode: check-only` gate that just
+  passed:** use its fresh after-execution snapshot as the baseline for the
+  lens dispatch.
+- **Full 8-node write cycle with `mode: skipped`, and refactor-only's initial
+  sweep** (no preceding QUALITY GATE run — see `../SKILL.md`'s refactor-only
+  entry path): compute the digest fresh, specifically for this purpose,
   immediately before dispatching the lenses.
-- **Refactor-only after its first REFACTOR:** same rule as the standard
-  cycle — use QUALITY GATE's fresh after-execution snapshot if `mode:
+- **Refactor-only after its first REFACTOR:** same rule as the full 8-node
+  write cycle — use QUALITY GATE's fresh after-execution snapshot if `mode:
   check-only` just passed; compute fresh if `mode: skipped`.
 - **Review-only** (never runs QUALITY GATE at all): compute the digest fresh
   immediately before dispatching the lenses.
@@ -327,7 +332,7 @@ prevent both.
 
 The 3 lens calls, Claude's fan-in, and the canonicalization call together
 count as **one** CRITIQUE pass (see the accounting rule this reference's
-integration adds to `SKILL.md`'s Anti-loop cutoff section).
+integration adds to `../SKILL.md`'s Anti-loop cutoff section).
 
 ### Late-lens rule
 
@@ -372,7 +377,7 @@ Rules:
   from other lenses is not a precondition.
 - Explicit disagreement between lenses about the same claim normally routes
   that finding to `debatable`, not to automatic dismissal.
-- Apply the existing DEBATE classification (`SKILL.md` node 5) to each
+- Apply the existing DEBATE classification (`../SKILL.md` node 5) to each
   record: valid / debatable / false positive. There is no fourth verdict.
 
 For cost containment, batch all `debatable` records from one CRITIQUE pass
@@ -381,8 +386,8 @@ one Codex round-trip per duplicate report.
 
 ## Exit challenger
 
-Gates entry to the cycle's terminal step — **VERIFY** in the standard write
-cycle, or **DONE** in refactor-only, which has no VERIFY node. Runs after
+Gates entry to the cycle's terminal step — **VERIFY** in the full 8-node
+write cycle, or **DONE** in refactor-only, which has no VERIFY node. Runs after
 DEBATE first reaches "no valid findings remain."
 
 - Must be fresh and read-only; confirm no other Codex task is active first.
@@ -440,5 +445,5 @@ defects. Read-only: do not fix anything, just report findings. --fresh --wait")
   degrade to reporting only one reviewer's output because a lens failed;
   an incomplete lens sweep escalates instead.
 
-See `references/goal-templates.md` for the ready-to-use `/goal` templates
+See `goal-templates.md` for the ready-to-use `/goal` templates
 (write-authorized and review-only) that authorize this mode.

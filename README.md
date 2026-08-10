@@ -315,11 +315,14 @@ go through REFACTOR, until one pass finds nothing against the artifact as it
 stands at that point. Only the *last* pass's "no valid findings" clears the
 gate into VERIFY (or DONE in refactor-only, which has no VERIFY node).
 
-It costs more than standard CRITIQUE: at least 5 Codex calls in a clean
-cycle (3 lenses + canonicalization + exit challenger), plus the Claude
-context spent fanning those reports in. For the risks that come with it —
-it is not independent verification, and the fan-in barrier has to be ordered
-correctly — see [Limitations / Risks](#limitations--risks).
+It costs more than standard CRITIQUE: a clean run of the full 8-node write
+cycle has 5 Codex review calls (3 lenses + canonicalization + exit challenger)
+— 6 Codex calls total, counting IMPL. Clean refactor-only has 5 total; clean
+review-only has 4 total (3 lenses + canonicalization) because it has neither
+IMPL nor an exit challenger. It also consumes Claude context during fan-in.
+For the risks that come with it — it is not independent verification, and
+the fan-in barrier has to be ordered correctly — see
+[Limitations / Risks](#limitations--risks).
 
 Full protocol (including why the fan-in barrier is not optional ceremony)
 and the ready-to-paste `/goal` templates:
@@ -444,7 +447,9 @@ claims live.
 - **Elevated assurance is not independent verification.** Its 3 lenses share
   the same underlying Codex model as standard CRITIQUE, so what they add is
   angle diversity plus reduced single-thread anchoring — not a second
-  opinion from a different model. Its extra cost (quantified under
+  opinion from a different model. A clean run of the full 8-node write cycle
+  costs 5 review calls — 6 total counting IMPL; clean refactor-only costs 5
+  total, and clean review-only costs 4 total. That extra cost (detailed under
   [Elevated assurance](#elevated-assurance-optional)) would undercut the
   token-savings motivation in [Why](#why) if it were ever treated as a
   default instead of a risk-triggered exception, which is why it isn't one.

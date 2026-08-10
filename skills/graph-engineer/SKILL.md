@@ -177,12 +177,13 @@ persisted schema, lens definitions, fan-in barrier, and budgets — that
 reference is required reading before enabling this mode, not optional
 background.
 
-PRE-FLIGHT uses the same preconditions as the standard write cycle and still
-resolves and persists the QUALITY GATE command because later REFACTOR writes
-are expected. It does not run QUALITY GATE before the first CRITIQUE: no IMPL
-or REFACTOR write has happened yet, so there is nothing new to gate. After the
-first REFACTOR write, every loop follows REFACTOR -> QUALITY GATE -> CRITIQUE
--> DEBATE until no findings remain, then refactor-only terminates at DONE.
+PRE-FLIGHT uses the same preconditions as the full 8-node write cycle and
+still resolves and persists the QUALITY GATE command because later REFACTOR
+writes are expected. It does not run QUALITY GATE before the first CRITIQUE:
+no IMPL or REFACTOR write has happened yet, so there is nothing new to gate.
+After the first REFACTOR write, every loop follows REFACTOR -> QUALITY GATE
+-> CRITIQUE -> DEBATE until no findings remain, then refactor-only terminates
+at DONE.
 
 Treat QUALITY GATE as a numbered invariant checkpoint, not a new actor or a
 fixed independent pipeline stage. Attach it as a capped retry edge to the
@@ -214,9 +215,9 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    enforced check instead of a hope.
 
    Also resolve the current feature's QUALITY GATE during PRE-FLIGHT for every
-   write-authorized mode: before IMPL in the standard cycle, and before the
-   initial CRITIQUE in refactor-only so the resolution is ready before any
-   possible REFACTOR. Read and follow
+   write-authorized mode: before IMPL in the full 8-node write cycle, and
+   before the initial CRITIQUE in refactor-only so the resolution is ready
+   before any possible REFACTOR. Read and follow
    `references/quality-gate-detection.md`; it is part of this node, not optional
    background. Resolve in this order: a still-valid resolution already
    persisted for this feature; a safe local wrapper invoked by the project's
@@ -236,7 +237,7 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata,
    and — see immediately below — writes `### Critique assurance` too, but
    only in refactor-only (there is no SPEC there to defer to). In the
-   standard write cycle, PRE-FLIGHT only *evaluates* elevated-assurance
+   full 8-node write cycle, PRE-FLIGHT only *evaluates* elevated-assurance
    triggers here; it writes nothing for `### Critique assurance` yet — SPEC
    is what finalizes and persists that resolution, once the actual contract
    exists to evaluate triggers against. Claude never edits implementation
@@ -265,7 +266,7 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    feature contract and finalizes `### Critique assurance` there (see
    immediately below). Claude never edits implementation files.
 
-   In the standard write cycle (not refactor-only), re-evaluate the
+   In the full 8-node write cycle (not refactor-only), re-evaluate the
    elevated-assurance triggers here against the actual contract just written
    — a trigger may only become visible once the contract exists (e.g. "touches
    payments" is often clear only after SPEC). Before IMPL runs, persist the
@@ -377,8 +378,8 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    findings.")
 
    # Refactor-only, every subsequent CRITIQUE (same continuity rules as the
-   # standard cycle — --resume-last, plus the fresh-fallback continuity
-   # summary if node 6 had to use it):
+   # full 8-node write cycle — --resume-last, plus the fresh-fallback
+   # continuity summary if node 6 had to use it):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
    [scope] again now that the previously agreed fixes have been applied,
    considering the prior findings and triage decisions.
@@ -405,8 +406,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    the lens prompts, the mandatory fan-in barrier (required specifically
    because the pinned plugin resolves `--resume-last` by newest `updatedAt`
    with no resume-by-thread-ID), the late-lens recovery rule, the normalized
-   finding record, and the budgets. Do not activate elevated mode without a
-   persisted `### Critique assurance` resolution of `mode: elevated`.
+   finding record, and the budgets. In write-authorized modes, do not activate
+   elevated mode without a persisted `### Critique assurance` resolution of
+   `mode: elevated`. In review-only, require the user's explicit request to be
+   recorded in the prompt, the Claude turn, and the final report.
 
    **Read-only is enforced, not just requested.** CRITIQUE's read-only
    behavior isn't a soft prompt instruction Codex could ignore — the
@@ -623,11 +626,13 @@ variant).
   REFACTOR.
 - `PROJECT_CONTEXT.md` is per-repo, not global; never write to the user's
   global Claude Code instructions file.
-- Elevated assurance (`references/elevated-assurance.md`) is opt-in, but when
-  active it costs at least 5 Codex calls in a clean cycle and consumes extra
-  Claude context during fan-in — it undercuts the token-savings motivation
-  above if treated as a default rather than a risk-triggered exception. Its
-  N lenses share the same underlying Codex model and are not independent
-  verification. Getting its fan-in barrier ordering wrong can misdirect
-  `--resume-last` to the wrong thread; it must never activate without
-  explicit user authorization.
+- Elevated assurance (`references/elevated-assurance.md`) is opt-in. A clean
+  run of the full 8-node write cycle costs at least 5 Codex review calls — 6
+  Codex calls total, counting IMPL; clean refactor-only costs 5 total, and
+  clean review-only costs 4 total because it has neither IMPL nor an exit
+  challenger. It also consumes extra Claude context during fan-in — it
+  undercuts the token-savings motivation above if treated as a default rather
+  than a risk-triggered exception. Its N lenses share the same underlying
+  Codex model and are not independent verification. Getting its fan-in
+  barrier ordering wrong can misdirect `--resume-last` to the wrong thread;
+  it must never activate without explicit user authorization.
