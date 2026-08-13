@@ -83,6 +83,47 @@ with adversarial framing in the prompt, not a different mechanism.
 `/codex:adversarial-review` can still be typed directly — it's just not part
 of what this skill automates.)
 
+## Selecting a mode
+
+Three entry paths exist. Pick one before starting — the cheapest costs a
+single Codex call and is a complete answer for most review work.
+
+Both columns below are derived, not measured. **Floor** is a run where
+CRITIQUE finds nothing. **One-fix round** is a run where one finding is
+accepted, fixed, and re-reviewed once — the smallest run that actually does
+something. Real runs with several findings cost more.
+
+| Mode | Path | Standard Codex calls (floor / one-fix round) | Use when |
+|---|---|---|---|
+| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of code that already exists. Never writes. |
+| **Refactor-only** | PRE-FLIGHT → CRITIQUE → DEBATE → REFACTOR → QUALITY GATE → CRITIQUE → … → DONE | 1 / 3 | Existing code needs fixing, with no new feature contract involved. |
+| **Full 8-node write cycle** | PRE-FLIGHT → SPEC → IMPL → … → VERIFY | 2 / 4 | New functionality that needs a contract written before the code exists. |
+
+Review-only is 1 in both columns because it never refactors — it reports and
+stops. Refactor-only and the full cycle reach their one-fix number by adding
+REFACTOR plus the re-review CRITIQUE that follows it.
+
+These counts are traced by node actor: IMPL, CRITIQUE, and REFACTOR are Codex
+calls, while PRE-FLIGHT, SPEC, QUALITY GATE, DEBATE, and VERIFY are Claude.
+QUALITY GATE only reaches Codex when a mechanical check fails, and DEBATE only
+when a `debatable` finding is reinjected. Elevated assurance expands node 4 and
+adds exit-challenger passes — it does not multiply IMPL or REFACTOR — and its
+floors are much higher, belong to that mode alone, and are listed under Risks.
+
+Note that both write-authorized paths begin at PRE-FLIGHT for a reason: that
+is where the clean-tree and non-`main` branch checks happen. Refactor-only
+does not start by calling Codex.
+
+**When not to authorize a write cycle.** The entry question is blast radius,
+not whether a change is "structural" or "cosmetic". If a change alters no
+behavior, crosses no module boundary, and touches no text another file cites
+as a contract, it has not earned a write cycle — read it yourself, or use
+review-only. Naming is not automatically exempt: a local variable's name has
+no blast radius, but a term other files reference as a contract does, and
+getting that wrong propagates silently.
+
+`references/goal-templates.md` has a ready-to-use `/goal` template per mode.
+
 ## The cycle (8 nodes)
 
 Create one todo per node before starting.
@@ -626,11 +667,15 @@ variant).
   REFACTOR.
 - `PROJECT_CONTEXT.md` is per-repo, not global; never write to the user's
   global Claude Code instructions file.
-- Elevated assurance (`references/elevated-assurance.md`) is opt-in. A clean
-  run of the full 8-node write cycle costs at least 5 Codex review calls — 6
-  Codex calls total, counting IMPL; clean refactor-only costs 5 total, and
-  clean review-only costs 4 total because it has neither IMPL nor an exit
-  challenger. It also consumes extra Claude context during fan-in — it
+- Elevated assurance (`references/elevated-assurance.md`) is opt-in, and its
+  call floors sit far above standard mode's (see Selecting a mode). A clean
+  **elevated** run of the full 8-node write cycle costs at least 5 Codex
+  review calls — 3 lenses, canonicalization, and the exit challenger — or 6
+  Codex calls total counting IMPL; clean elevated refactor-only costs 5 total,
+  and clean elevated review-only costs 4 total (3 lenses + canonicalization)
+  because it has neither IMPL nor an exit challenger. Every number in this
+  bullet describes elevated mode alone; the standard floors are 1 to 2. It
+  also consumes extra Claude context during fan-in — it
   undercuts the token-savings motivation above if treated as a default rather
   than a risk-triggered exception. Its N lenses share the same underlying
   Codex model and are not independent verification. Getting its fan-in

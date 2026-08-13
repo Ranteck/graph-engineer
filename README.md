@@ -233,6 +233,47 @@ Before authorizing any `--write` cycle, exercise the review-only template
 `git status`, and confirm the final `git status` still reports clean
 afterward (a clean starting point is what makes that comparison meaningful).
 
+## Choosing a mode
+
+There are three entry paths. The cheapest costs a single Codex call and is a
+complete answer for most review work, so pick deliberately rather than
+defaulting to the full cycle.
+
+Both columns are derived, not measured. **Floor** is a run where CRITIQUE
+finds nothing. **One-fix round** is a run where one finding is accepted,
+fixed, and re-reviewed once — the smallest run that actually does something.
+Real runs with several findings cost more.
+
+| Mode | Path | Standard Codex calls (floor / one-fix round) | Use when |
+|---|---|---|---|
+| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of existing code. Never writes. |
+| **Refactor-only** | PRE-FLIGHT → CRITIQUE → DEBATE → REFACTOR → QUALITY GATE → CRITIQUE → … → DONE | 1 / 3 | Existing code needs fixing, with no new feature contract involved. |
+| **Full 8-node write cycle** | PRE-FLIGHT → SPEC → IMPL → … → VERIFY | 2 / 4 | New functionality that needs a contract written before the code exists. |
+
+Review-only is 1 in both columns because it never refactors — it reports and
+stops. The other two reach their one-fix number by adding REFACTOR plus the
+re-review CRITIQUE after it.
+
+Only IMPL, CRITIQUE, and REFACTOR are Codex calls; the other nodes are Claude.
+QUALITY GATE reaches Codex only when a mechanical check fails, and DEBATE only
+when a "debatable" finding is reinjected (see the
+[sub-loop](#the-cycle-8-nodes) above). [Elevated
+assurance](#elevated-assurance-optional) expands node 4 and adds
+exit-challenger passes — it doesn't multiply IMPL or REFACTOR — and has its
+own, much higher floors.
+
+Both write-authorized paths start at PRE-FLIGHT for a reason: that's where the
+clean-tree and non-`main` branch checks happen. Refactor-only does not begin
+by calling Codex.
+
+**When not to authorize a write cycle.** The question is blast radius, not
+whether a change is "structural" or "cosmetic". A change that alters no
+behavior, crosses no module boundary, and touches no text another file cites
+as a contract hasn't earned a write cycle — read it yourself, or use
+review-only. Naming isn't automatically exempt: a local variable's name has no
+blast radius, but a term other files reference as a contract does, and getting
+that wrong propagates silently.
+
 ## Usage
 
 **This is the write-authorized template** — it lets Codex edit files. For a
@@ -405,10 +446,12 @@ claims live.
   `spawn("codex", ["app-server"])` (`scripts/lib/app-server.mjs`) — a
   long-lived JSON-RPC server, not a fresh CLI exec per review. `"review"` is
   an internal job-class label used against that server, not a CLI argument.
-  The real cost is **one full Codex turn per cycle node** (context, model
-  reasoning), multiplied across 8 nodes and, if elevated assurance is on, the
-  extra lens/canonicalization/exit-challenger calls on top — that's where
-  the expense actually is, not in process startup.
+  The real cost is **one full Codex turn per Codex node** (context, model
+  reasoning) — IMPL, CRITIQUE, and REFACTOR, not all 8 nodes, since the other
+  five run on Claude (see [Choosing a mode](#choosing-a-mode)) — multiplied
+  across however many times the loop revisits them and, if elevated assurance
+  is on, the extra lens/canonicalization/exit-challenger calls on top. That's
+  where the expense actually is, not in process startup.
 - **A read-only Codex session may stay read-only when resumed.** A session
   created without write access has been observed rejecting a later
   `--resume-last --write` attempt at the sandbox boundary. Recovery is to
@@ -447,9 +490,12 @@ claims live.
 - **Elevated assurance is not independent verification.** Its 3 lenses share
   the same underlying Codex model as standard CRITIQUE, so what they add is
   angle diversity plus reduced single-thread anchoring — not a second
-  opinion from a different model. A clean run of the full 8-node write cycle
-  costs 5 review calls — 6 total counting IMPL; clean refactor-only costs 5
-  total, and clean review-only costs 4 total. That extra cost (detailed under
+  opinion from a different model. A clean **elevated** run of the full 8-node
+  write cycle costs 5 review calls (3 lenses + canonicalization + exit
+  challenger) — 6 total counting IMPL; clean elevated refactor-only costs 5
+  total, and clean elevated review-only costs 4 total. Those are elevated
+  figures only; the standard floors are in
+  [Choosing a mode](#choosing-a-mode). That extra cost (detailed under
   [Elevated assurance](#elevated-assurance-optional)) would undercut the
   token-savings motivation in [Why](#why) if it were ever treated as a
   default instead of a risk-triggered exception, which is why it isn't one.
