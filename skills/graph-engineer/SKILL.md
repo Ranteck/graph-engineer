@@ -299,6 +299,17 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    `PROJECT_CONTEXT.md`. Recheck that narrow window before IMPL and abort if
    any other path or unrelated delta appears.
 
+   **Checkpoint commit policy.** Also decide, once per cycle entry, whether
+   Claude will create local checkpoint commits after each passing QUALITY
+   GATE run (node 3 defines what gets committed and how). Default to
+   authorizing it unless something about the repo makes a non-interactive
+   local commit unsafe or impossible — a commit hook that mutates the tree,
+   required GPG signing that would block waiting on a passphrase, a detached
+   HEAD, or similar. If any of those apply, ask the user once or fall back to
+   no checkpoints, and say so. This authorization only ever covers local
+   commits on the current branch — never push, never rewrite history, never
+   touch any ref but the branch tip.
+
 1. **SPEC** (Claude, cheap) — Write the component's contract into
    `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
    does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
@@ -369,6 +380,49 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    unexpected delta in either. Report stdout, stderr, and exit code verbatim.
    Never interpret quiet output as success without checking the exit code,
    and never auto-install a missing dependency.
+
+   **Checkpoint commit on a passing gate.** When PRE-FLIGHT authorized
+   checkpoint commits (see node 0) and this run of QUALITY GATE passes,
+   Claude — never Codex — creates one local git commit for the tree QUALITY
+   GATE just approved, before CRITIQUE runs. This applies uniformly to the
+   gate pass that follows the initial IMPL (round `r00`) and to the gate pass
+   that follows every REFACTOR (`r01`, `r02`, …), since QUALITY GATE already
+   treats both writer calls the same way. Claude does this itself with
+   Bash/git rather than asking Codex, because REFACTOR does not yet know the
+   gate's outcome when it runs, and pass/fail is Claude's own finding to act
+   on. Stage only the paths this cycle actually touched — inspect
+   `git status --porcelain=v1 -uall` and `git diff --cached` before
+   committing, never `git add -A`/`git add .` blind — and never push.
+
+   A checkpoint commit is a **restore point for a mechanically-admissible
+   tree, not an approval**: QUALITY GATE covers lint/format/types/build only,
+   never CRITIQUE or VERIFY's judgment. Say so in the commit itself. Use:
+
+   ```
+   graph-engineer(<feature>): checkpoint <IMPL r00 | REFACTOR r04> [review-pending]
+
+   Mode: <standard | elevated>
+   Round: <IMPL-r00 | REFACTOR-r04>
+   Source: <CRITIQUE pass N / exit-challenger N / n/a for r00>
+   Findings: <finding IDs or a short summary of what this round fixed>
+   Quality-Gate: PASS — <command>, exit 0
+   Critique: PENDING
+   Verify: PENDING
+   Cycle-State: CHECKPOINT
+   ```
+
+   `Cycle-State` must read `CHECKPOINT`, never `COMPLETE`, at every one of
+   these commits — `COMPLETE` is reserved for the terminal commit once VERIFY
+   (or, in refactor-only, the final DONE-clearing CRITIQUE/exit-challenger
+   pass) has actually passed. Declaring `COMPLETE` early is exactly the
+   mistake a real run made: a round was tagged "mark COMPLETE" and five more
+   REFACTOR rounds followed it.
+
+   This is a narrow, explicitly scoped exception to "Claude never edits
+   implementation files": a local `git commit` writes to `.git` (index,
+   objects, refs) on the current branch, never to the content of any tracked
+   file. It authorizes checkpoint commits only — never editing file content,
+   never `push`, never rewriting history.
 
 4. **CRITIQUE** (Codex critiques, adversarially, no writes) — The first
    CRITIQUE call in a cycle starts a fresh thread. Every CRITIQUE call after
@@ -667,6 +721,12 @@ variant).
   REFACTOR.
 - `PROJECT_CONTEXT.md` is per-repo, not global; never write to the user's
   global Claude Code instructions file.
+- **A checkpoint commit is not an approval.** The `Cycle-State: CHECKPOINT`
+  commits described under QUALITY GATE only prove the tree passed mechanical
+  checks — never that CRITIQUE or VERIFY have signed off. Treat every one as
+  a restore point to revert to if a later round goes wrong, not as evidence
+  the feature is done; a real run that tagged an intermediate round
+  `COMPLETE` needed five more REFACTOR rounds after it.
 - Elevated assurance (`references/elevated-assurance.md`) is opt-in, and its
   call floors sit far above standard mode's (see Selecting a mode). A clean
   **elevated** run of the full 8-node write cycle costs at least 5 Codex

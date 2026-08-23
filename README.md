@@ -187,6 +187,19 @@ CRITIQUE cap, anti-loop, QUALITY GATE, and environmental clauses apply too.]
 7. **VERIFY** — Functional tests run green. The `/goal` condition is met and
    the loop ends.
 
+## Checkpointing
+
+Long cycles — especially with elevated assurance, which can chain many
+REFACTOR rounds — benefit from a restore point after every round. Claude
+creates a local git commit (never pushed) after each round's mechanical
+checks pass and before the next review starts, tagged `Cycle-State:
+CHECKPOINT` rather than `COMPLETE` — a checkpoint only proves the tree passed
+lint/type/build, not that the adversarial review or tests approved it. If a
+later round goes wrong, you can revert to any prior round's checkpoint. See
+`skills/graph-engineer/SKILL.md`'s QUALITY GATE node for the exact commit
+format and the narrow exception this carves out of "Claude never edits
+implementation files" (it covers local git metadata, never file content).
+
 ## Requirements
 
 This skill needs the official OpenAI Codex plugin for Claude Code:
@@ -487,6 +500,12 @@ claims live.
   repository.** It's a real, persistent file in your repo, namespaced per
   feature — not cleaned up automatically. Review it explicitly (and decide
   whether to commit it) before wrapping up the work.
+- **A checkpoint commit is not an approval.** See
+  [Checkpointing](#checkpointing) above. Claude tags every one
+  `Cycle-State: CHECKPOINT`, never `COMPLETE`, precisely because passing
+  QUALITY GATE only proves lint/type/build passed, not that CRITIQUE or
+  VERIFY signed off — a real run once tagged an intermediate round
+  `COMPLETE` and needed five more REFACTOR rounds after it.
 - **Elevated assurance is not independent verification.** Its 3 lenses share
   the same underlying Codex model as standard CRITIQUE, so what they add is
   angle diversity plus reduced single-thread anchoring — not a second

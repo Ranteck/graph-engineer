@@ -67,6 +67,15 @@ reducing correlated self-review failure by putting Claude in the arbitration
 path, and specializing Codex and Claude into explicit writer/reviewer and
 contract/triage roles.
 
+One narrow, explicitly scoped exception: when PRE-FLIGHT has authorized checkpoint
+commits, Claude may run local `git commit` after a passing QUALITY GATE (node 3),
+before CRITIQUE — see the "Checkpoint commit on a passing gate" paragraph there. This
+writes to `.git` (index/objects/refs) on the current branch, never to tracked file
+content, and never pushes or rewrites history. It exists because a long elevated-mode
+cycle can chain many REFACTOR rounds with no restore point between them if nothing
+commits until the end — don't read this exception as license for Claude to touch
+implementation file content, and don't let it drift into pushing or amending history.
+
 Related invariants worth preserving when editing `SKILL.md`:
 
 - CRITIQUE calls never pass `--write` — this is enforced by the underlying
