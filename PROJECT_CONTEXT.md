@@ -22,24 +22,43 @@ the feature currently in progress.
 
 ### Critique assurance
 
-- **Initial PRE-FLIGHT evaluation (scope-level, pre-SPEC)**: `elevated`
-  (user-confirmed).
-- **Evidence for the matched triggers**:
-  1. QUALITY GATE resolved to `mode: skipped` (see above) — the feature has
-     no executable functional verification able to exercise its behavior,
-     which is a listed recommendation trigger in `elevated-assurance.md`.
-  2. The artifact being modified is `SKILL.md`/`README.md` themselves — the
-     invocation syntax and documented guarantees of the skill are read by
-     every future invocation of this skill, which is a broad blast radius
-     analogous to "changes a public API/contract shared by more than one
-     component."
-- **User decision**: User confirmed "Elevated" via AskUserQuestion during
-  PRE-FLIGHT, before SPEC exists yet.
-- **Status**: This is the initial PRE-FLIGHT evaluation, not yet the final
-  persisted resolution. Per `SKILL.md` node 1 (SPEC), the elevated-assurance
-  triggers must be re-evaluated once the actual contract exists and the
-  final resolution persisted here before IMPL runs. Expect this section to
-  be updated by SPEC.
+- **mode**: `elevated`
+- **resolution**: `user-confirmed-trigger`
+- **trigger matches**: (1) QUALITY GATE resolved to `mode: skipped` — the
+  feature has no executable functional verification able to exercise its
+  behavior, a listed recommendation trigger in `elevated-assurance.md`. (2)
+  The modified artifact is `SKILL.md`/`README.md`/a new reference file
+  themselves — the skill's own public, widely-read contract, a broad blast
+  radius analogous to "changes a public API/contract shared by more than one
+  component."
+- **trigger evidence**: `PROJECT_CONTEXT.md` `### Quality gate` above;
+  `skills/graph-engineer/SKILL.md`, `README.md`, and (once written)
+  `skills/graph-engineer/references/backend-selection.md`.
+- **User decision**: User confirmed "Elevated" via AskUserQuestion at
+  PRE-FLIGHT (scope-level, pre-SPEC). Re-evaluated at end of SPEC once the
+  contract existed — both triggers still held, no new information changed
+  the call. This is the final resolution; both evaluation passes agreed.
+- **lens count**: 3
+- **lens set**: correctness-contracts; integration-state-reproducibility;
+  security-abuse-data-loss
+- **exit challenger**: required-before-verify-or-done-rerun-until-clean
+- **CRITIQUE pass cap**: 5 (template default)
+- **Codex review/debate call budget**: 13 (template default)
+
+### Backend
+
+- **backend**: `codex` (not specified by user for this cycle)
+- **resolution**: `default-codex`
+- **resolved session**: not-applicable
+- **disclosure**: not-applicable (default backend, no same-model caveat
+  applies to this cycle's own IMPL/CRITIQUE/REFACTOR)
+- **Resolved by**: PRE-FLIGHT, this cycle. Retroactively persisted after
+  CRITIQUE identified (finding FB-10) that this section should have existed
+  before IMPL per this feature's own new contract — the contract didn't
+  exist yet at this cycle's PRE-FLIGHT time (it's the artifact SPEC was
+  about to write), so this is the earliest point it could honestly be
+  added. Future cycles — including this feature's own REFACTOR rounds —
+  must persist it before IMPL, per the now-published contract.
 
 ### Checkpoint commits
 
@@ -175,12 +194,3 @@ per-role account aliases (e.g. distinct writer vs. reviewer sessions);
 parallel same-model reviewers for sample diversity (mentioned as a possible
 future mitigation, not required now); any change to Codex's own behavior or
 to the default (`codex`) path.
-
-### Critique assurance — re-evaluation at end of SPEC
-
-Both PRE-FLIGHT-visible triggers still hold now that the contract exists:
-QUALITY GATE is `mode: skipped` (unchanged), and this contract confirms the
-modified artifact is `SKILL.md`/`README.md`/a new reference file — the
-skill's own public, widely-read contract. **Final resolution: `mode:
-elevated`**, matching the user's PRE-FLIGHT confirmation. No new information
-from the contract changes this call.

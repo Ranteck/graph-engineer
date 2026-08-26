@@ -7,6 +7,14 @@ project and paste it as-is, adjusting the feature name and scope.
 Reminder: `/goal` is a stop-gate — evaluated when Claude tries to end the
 turn, not a scheduler. To reset it: `/goal clear`.
 
+**Backend note.** These templates describe the default `codex` backend. If
+you select `backend: claude` or `backend: claude:<account-alias>`, adapt the
+literal “Codex” writer/reviewer wording in your `/goal` to name the selected
+backend instead; do not leave a Codex-only stop condition that the chosen
+backend cannot satisfy. See `backend-selection.md` for resolution,
+confirmation, disclosure, and compatibility rules. This note is intentionally
+centralized rather than repeated throughout every template.
+
 ## Two-message mode (recommended when the contract is ambiguous)
 
 Use this when the feature needs a real design decision — send the task
@@ -18,6 +26,12 @@ Use graph-engineer to prepare [feature] in [file/folder]. Run PRE-FLIGHT and
 SPEC only, write and show me the contract in PROJECT_CONTEXT.md, then stop
 before IMPL. Do not invoke Codex with --write until I approve the contract.
 ```
+
+A `backend:` directive must be included in message 1, where PRE-FLIGHT can
+see it — message 2 cannot retroactively change the resolved backend. For
+example, prepend `backend: claude` to message 1, then adapt message 2's
+Codex-only clause to: “no implementation file was edited by the orchestrating
+Claude directly (only by the selected `claude` writer backend).”
 
 **Message 2**, once the contract is shown and you approve it:
 ```

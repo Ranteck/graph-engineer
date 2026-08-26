@@ -15,6 +15,7 @@ skills/graph-engineer/
     ├── goal-templates.md              # ready-to-use /goal templates per scenario
     ├── quality-gate-detection.md      # generic quality-gate command resolver algorithm
     ├── elevated-assurance.md          # optional opt-in multi-lens CRITIQUE variant
+    ├── backend-selection.md           # opt-in per-cycle writer/reviewer routing
     └── sources.md                     # provenance: what's official Anthropic/OpenAI vs. not
 ```
 
@@ -50,9 +51,11 @@ consistent across all of them:
 
 ## Core design invariant
 
-**Claude never edits implementation files with Edit/Write anywhere in the cycle** —
-only Codex does, via `codex:codex-rescue --write`. `PROJECT_CONTEXT.md` in the
-*consuming* repo is Claude's only writable artifact across the entire cycle:
+**The orchestrating Claude never edits implementation files with Edit/Write
+anywhere in the cycle** — the writer selected at PRE-FLIGHT does: Codex by
+default via `codex:codex-rescue --write`, unless the user opts into a Claude
+backend for that cycle. `PROJECT_CONTEXT.md` in the *consuming* repo is the
+orchestrating Claude's only writable file-content artifact across the cycle:
 PRE-FLIGHT writes the `### Quality gate` resolution metadata there, SPEC writes
 the feature contract there, and (in write-authorized modes) PRE-FLIGHT/SPEC also
 finalize the `### Critique assurance` resolution there before IMPL — see

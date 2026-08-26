@@ -203,8 +203,8 @@ implementation files" (it covers local git metadata, never file content).
 
 ## Requirements
 
-This skill needs the official OpenAI Codex plugin for Claude Code:
-**[openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)**.
+The default `codex` backend needs the official OpenAI Codex plugin for Claude
+Code: **[openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)**.
 
 ```
 /plugin marketplace add openai/codex-plugin-cc
@@ -212,7 +212,10 @@ This skill needs the official OpenAI Codex plugin for Claude Code:
 /codex:setup
 ```
 
-`/codex:setup` should report `Status: ready`. Also needs
+`/codex:setup` should report `Status: ready`. The opt-in `backend: claude` and
+`backend: claude:<account-alias>` routes do not call Codex and therefore do
+not require this plugin, though all backend-resolution and cycle invariants
+still apply. The skill also needs
 [Claude Code](https://claude.com/claude-code) itself — this skill relies on
 the built-in `/goal` command; confirm it's available in your installed
 build, since this repository doesn't currently pin a verified Claude Code
@@ -260,7 +263,7 @@ Real runs with several findings cost more.
 
 | Mode | Path | Standard Codex calls (floor / one-fix round) | Use when |
 |---|---|---|---|
-| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of existing code. Never writes. |
+| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of existing code. Authorizes no writes; only the default Codex path enforces that with a sandbox. |
 | **Refactor-only** | PRE-FLIGHT → CRITIQUE → DEBATE → REFACTOR → QUALITY GATE → CRITIQUE → … → DONE | 1 / 3 | Existing code needs fixing, with no new feature contract involved. |
 | **Full 8-node write cycle** | PRE-FLIGHT → SPEC → IMPL → … → VERIFY | 2 / 4 | New functionality that needs a contract written before the code exists. |
 
@@ -298,29 +301,42 @@ Omitting the directive unconditionally keeps the existing `codex` default;
 the diagrams, standard call counts, and Codex invocations elsewhere in this
 README describe that default path.
 
-This option changes only the per-cycle writer/reviewer dispatch. PRE-FLIGHT
+This option selects the per-cycle writer/reviewer dispatch. PRE-FLIGHT
 resolves and records it, and nodes 2/4/6 apply it without changing the 8-node
-cycle; see [nodes 0, 2, 4, and 6 in `SKILL.md`](skills/graph-engineer/SKILL.md#the-cycle-8-nodes)
+cycle; non-Codex selections also use the synchronization, continuity, and
+isolation rules in the detailed reference. See
+[nodes 0, 2, 4, and 6 in `SKILL.md`](skills/graph-engineer/SKILL.md#the-cycle-8-nodes)
 and the detailed
 [`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md).
+The `claude:<account-alias>` route also makes each node handoff asynchronous:
+the orchestrator must await a reply that answers that specific cross-session
+dispatch before advancing, and the reference documents its continuity and
+isolation caveats.
 
 Honest caveat: any backend other than `codex` uses the same underlying Claude
 model for writer and reviewer, so it gives up the different-model mitigation
 described under [Less correlated self-review failure](#why) for that run.
 DEBATE and the anti-loop cutoff still apply, but do not restore cross-model
-diversity.
+diversity. A Claude writer also runs with its session's full ambient shell,
+network, git, and credential authority, with no Codex-equivalent
+workspace-write sandbox; that capability/blast-radius difference is a
+separate disclosed limitation.
 
 ## Usage
 
-**This is the write-authorized template** — it lets Codex edit files. For a
-read-only audit with no edits, use the dedicated review-only template in
+**This is the default-`codex`, write-authorized template** — it lets Codex
+edit files. For a review-only audit that authorizes no edits, use the
+dedicated review-only template in
 [`skills/graph-engineer/references/goal-templates.md`](skills/graph-engineer/references/goal-templates.md)
 instead of substituting "review" into the prompt below; the two modes have
 different, incompatible permissions. Review-only also isn't the 8-node cycle
 running read-only — it's a separate terminal path
 (`PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE`) that skips SPEC, IMPL,
 QUALITY GATE, REFACTOR, and VERIFY. It reviews the scope you name directly
-and doesn't require a `PROJECT_CONTEXT.md` contract to exist.
+and doesn't require a `PROJECT_CONTEXT.md` contract to exist. On non-Codex
+backends, “authorizes no edits” is not an absolute sandbox guarantee; follow
+the mutation-detection and prompt-only/tool-list caveats in
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 
 ```
 /goal Implement [what you want] in [file/folder or scope], code written and

@@ -43,8 +43,9 @@ Claude Code's built-in `/goal` stop-gate.
 
 ## Prerequisite
 
-The official OpenAI Codex plugin for Claude Code must be installed and
-authenticated: [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
+When PRE-FLIGHT resolves the default `codex` backend, the official OpenAI
+Codex plugin for Claude Code must be installed and authenticated:
+[openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
 
 ```
 /plugin marketplace add openai/codex-plugin-cc
@@ -54,7 +55,10 @@ authenticated: [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-c
 
 `/codex:setup` should report `Status: ready`. If it doesn't, stop and tell the
 user to fix their Codex setup — this skill doesn't try to diagnose plugin
-installation problems.
+installation problems. `backend: claude` and
+`backend: claude:<account-alias>` do not require the Codex plugin because
+those routes never call it, but PRE-FLIGHT backend resolution and every other
+applicable skill invariant still apply.
 
 **Tested against `openai-codex` plugin v1.0.6.** The routing assumptions in
 this skill (single `codex:codex-rescue` entry point, `--write`/`--resume-last`
@@ -98,7 +102,7 @@ something. Real runs with several findings cost more.
 
 | Mode | Path | Standard Codex calls (floor / one-fix round) | Use when |
 |---|---|---|---|
-| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of code that already exists. Never writes. |
+| **Review-only** | PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE | 1 / 1 | You want an adversarial read of code that already exists. Authorizes no writes; only the default Codex path enforces that with a sandbox. |
 | **Refactor-only** | PRE-FLIGHT → CRITIQUE → DEBATE → REFACTOR → QUALITY GATE → CRITIQUE → … → DONE | 1 / 3 | Existing code needs fixing, with no new feature contract involved. |
 | **Full 8-node write cycle** | PRE-FLIGHT → SPEC → IMPL → … → VERIFY | 2 / 4 | New functionality that needs a contract written before the code exists. |
 
@@ -236,8 +240,10 @@ write-authorized modes, enforce this for CRITIQUE calls that follow an IMPL or
 REFACTOR write: **such a CRITIQUE call may run only after the tree has passed
 QUALITY GATE since that write or when a currently-valid persisted
 user-confirmed opt-out exists.** This invariant does not apply to review-only,
-which never writes and therefore has nothing to gate, or to refactor-only's
-first CRITIQUE, which also precedes any IMPL or REFACTOR write.
+which authorizes no writer and therefore has nothing to gate; non-Codex
+reviewer mutation risks and drift checks are defined in
+`references/backend-selection.md`. It also does not apply to refactor-only's
+first CRITIQUE, which precedes any IMPL or REFACTOR write.
 
 0. **PRE-FLIGHT** (Claude, cheap) — The full requirements below apply to modes
    that can reach IMPL or REFACTOR and therefore authorize writes. Review-only
@@ -266,9 +272,15 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    under `### Backend` in the current feature's `PROJECT_CONTEXT.md` section
    before IMPL (or before refactor-only's initial CRITIQUE). For
    `claude:<account-alias>`, resolve the alias through `ListAgents` before
-   SPEC and abort clearly if no unambiguous reachable match exists — never
-   fall back silently. When the backend is not `codex`, give and persist the
-   mandatory same-model disclosure before SPEC. Review-only records the
+   SPEC, display the reported identity, and require explicit user confirmation
+   before dispatch; reachability alone is not authorization or workspace
+   verification. Abort clearly if no unambiguous reachable match exists or no
+   confirmation is available — never fall back silently. Reject elevated
+   assurance combined with a cross-session alias; same-session `claude` can
+   instead supply 3 fresh parallel `Explore` lenses. When the backend is not
+   `codex`, give and persist every mandatory disclosure before SPEC, or before
+   the first dispatched node when the selected mode has no SPEC. Review-only
+   records the
    resolution and any disclosure in the prompt, turn, and final report
    instead of writing `PROJECT_CONTEXT.md`. Read and follow
    `references/backend-selection.md`; it defines the persisted schema,
@@ -455,8 +467,9 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    file. It authorizes checkpoint commits only — never editing file content,
    never `push`, never rewriting history.
 
-4. **CRITIQUE** (selected backend critiques, adversarially, no writes; Codex
-   by default) — On the default Codex path, the first CRITIQUE call in a
+4. **CRITIQUE** (selected backend critiques adversarially; Codex by default,
+   with sandbox-enforced no-write behavior only on that path) — On the default
+   Codex path, the first CRITIQUE call in a
    cycle starts a fresh thread. Every CRITIQUE call after that—including one
    reached from a VERIFY failure—must pass
    `--resume-last`, so Codex retains memory of its own prior findings and of
@@ -528,7 +541,8 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    valid/debatable/false-positive arbitration to node 5. A non-Codex review
    must never be narrated as independent or cross-model review.
 
-   **Elevated assurance (opt-in variant).** When `### Critique assurance` in
+   **Elevated assurance (opt-in variant).** On the default Codex path, when
+   `### Critique assurance` in
    `PROJECT_CONTEXT.md` (or, in review-only, the user's explicit request)
    resolves to `mode: elevated`, the first CRITIQUE traversal of the cycle
    uses 3 fresh independent lenses plus a fresh canonicalization call instead
@@ -536,8 +550,12 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    gates entry to VERIFY (or DONE in refactor-only) — rerun fresh after any
    REFACTOR the exit challenger itself triggers, until one pass finds no
    valid findings against the then-current artifact; see the pass-accounting
-   note under Anti-loop cutoff. Every later resumed round in elevated mode
-   still uses `--resume-last` exactly as standard mode does.
+   note under Anti-loop cutoff. Every later resumed Codex round in elevated
+   mode still uses `--resume-last` exactly as standard mode does. The
+   same-session `claude` backend instead uses 3 fresh parallel `Explore`
+   lenses, Claude-maintained continuity, and Claude's own canonicalization;
+   `claude:<account-alias>` is incompatible with elevated assurance. Follow
+   `references/backend-selection.md` for those rules.
    This is not a separate node — it is entirely a node 4 variant. Follow
    `references/elevated-assurance.md` in full before running it; it defines
    the lens prompts, the mandatory fan-in barrier (required specifically

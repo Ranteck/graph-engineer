@@ -34,6 +34,11 @@ design.
   binary): `/goal [<condition> | clear]`, "Set a goal — keep working until
   the condition is met." It's a stop-gate evaluated when the model tries to
   end a turn, not a scheduler.
+- **`general-purpose` and `Explore` agents, plus `ListAgents` and
+  `SendMessage`,** are official Claude Code built-in agent/tool primitives,
+  not third-party integrations. `backend-selection.md` uses them for the
+  opt-in Claude routing paths and documents their materially different
+  authority, continuity, and isolation properties.
 
 ## Observed, but not independently verified for this skill's use case
 
