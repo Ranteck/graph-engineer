@@ -104,7 +104,8 @@ small sub-loop, invisible in the 8-node diagram above:
 ```
 [5 DEBATE]  finding classified as "debatable"
       ↓
-      Claude reinjects it to codex:codex-rescue with a counterargument
+      On the default codex path, Claude reinjects it to
+      codex:codex-rescue with a counterargument
       ("Codex flagged X, but Y because Z — do you stand by it or reconsider?"),
       always with --resume-last so the thread stays continuous
       ↓
@@ -116,7 +117,10 @@ small sub-loop, invisible in the 8-node diagram above:
 
 This sub-loop happens entirely inside node 5, before anything reaches node
 6 — it's an extra round-trip to Codex per debatable finding, not just a
-triage checkbox.
+triage checkbox. Non-Codex backends use the manual or cross-session continuity
+mechanism in
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md)
+instead.
 
 `/goal` (see [Usage](#usage)) is Claude Code's built-in stop-gate: it holds
 the turn open until your success condition is verifiably true. On top of
@@ -301,6 +305,15 @@ Omitting the directive unconditionally keeps the existing `codex` default;
 the diagrams, standard call counts, and Codex invocations elsewhere in this
 README describe that default path.
 
+Every non-`codex` selection — plain `backend: claude` as well as
+`backend: claude:<account-alias>` — requires explicit user confirmation
+before the first dispatch; disclosure alone is not authorization. For an
+alias, PRE-FLIGHT also resolves it through `ListAgents`, displays the exact
+reported identity for confirmation, and aborts rather than guessing or
+falling back if the match or confirmation is unavailable. An unattended
+`/goal` run cannot silently adopt either Claude route from scanned or pasted
+text.
+
 This option selects the per-cycle writer/reviewer dispatch. PRE-FLIGHT
 resolves and records it, and nodes 2/4/6 apply it without changing the 8-node
 cycle; non-Codex selections also use the synchronization, continuity, and
@@ -308,6 +321,12 @@ isolation rules in the detailed reference. See
 [nodes 0, 2, 4, and 6 in `SKILL.md`](skills/graph-engineer/SKILL.md#the-cycle-8-nodes)
 and the detailed
 [`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md).
+Every non-Codex reviewer call is wrapped in that reference's mandatory
+before/after artifact-identity digest; drift or an unverifiable comparison is
+a stop-and-escalate condition, not a sandbox guarantee. Same-session
+`backend: claude` supports elevated assurance with 3 parallel fresh `Explore`
+lenses and Claude's own canonicalization, while
+`backend: claude:<account-alias>` is incompatible with elevated assurance.
 The `claude:<account-alias>` route also makes each node handoff asynchronous:
 the orchestrator must await a reply that answers that specific cross-session
 dispatch before advancing, and the reference documents its continuity and
@@ -320,7 +339,17 @@ DEBATE and the anti-loop cutoff still apply, but do not restore cross-model
 diversity. A Claude writer also runs with its session's full ambient shell,
 network, git, and credential authority, with no Codex-equivalent
 workspace-write sandbox; that capability/blast-radius difference is a
-separate disclosed limitation.
+separate disclosed limitation. The alias route additionally sends the
+contract, findings, and triage history to another session under that
+session's tools, hooks, and retention; the skill neither redacts nor scans
+those payloads, so it should not be used for sensitive contracts. A confirmed
+alias and matching local digest still cannot prove which repository,
+worktree, branch, or HEAD the target session actually operated on.
+
+Backend selection does not spawn Claude Code sessions, provide per-role
+aliases, verify a cross-session target's workspace identity, or alter the
+default Codex path. Parallel same-model reviewers remain out of scope except
+for the defined 3-lens `backend: claude` elevated-assurance variant.
 
 ## Usage
 
@@ -382,6 +411,14 @@ silently — only on explicit request or after you confirm a matched risk
 trigger (auth/crypto/payments/migrations, irreversible operations,
 concurrency, public contract changes, a large diff, or a skipped QUALITY
 GATE).
+
+The diagram and Codex-call counts below describe the default `codex` path.
+With a confirmed `backend: claude`, elevated assurance instead follows
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md):
+3 parallel fresh `Explore` lenses and Claude's own canonicalization, with no
+separate canonicalization call, canonical thread, `--resume-last`, or Codex
+budget consumed. The `claude:<account-alias>` backend cannot run elevated
+assurance.
 
 ```mermaid
 flowchart TD

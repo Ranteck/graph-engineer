@@ -59,29 +59,34 @@ the applicable `## <feature-name>` heading, and `### Critique assurance` is a
 finalized resolution, not a runtime progress log — don't have any node write
 intermediate elevated-assurance state (which lens finished, whether
 canonicalization happened yet) to `PROJECT_CONTEXT.md`. Any change to `SKILL.md`
-that would have Codex editing code directly breaks the reasons this skill
-exists: preserving Codex's context/tokens for orchestration and judgment,
-reducing correlated self-review failure by putting Codex in the arbitration
-path, and specializing Codex and Codex into explicit writer/reviewer and
-contract/triage roles.
+that would have the orchestrating Claude editing implementation files directly
+breaks the reasons this skill exists: preserving Claude's context/tokens for
+orchestration and judgment, reducing correlated self-review failure by putting
+Claude in the arbitration path, and specializing the dispatched writer/reviewer
+and the orchestrating contract/triage roles.
 
 Related invariants worth preserving when editing `SKILL.md`:
 
-- CRITIQUE calls never pass `--write` — this is enforced by the underlying
-  `codex-companion.mjs` sandbox (`workspace-write` vs `read-only`), not just a prompt
-  convention. Don't describe it as a soft/optional guarantee. This includes every
-  elevated-assurance lens and the exit challenger — none of them ever pass `--write`.
-- After the first CRITIQUE in a cycle, every subsequent CRITIQUE and normal REFACTOR
-  call passes `--resume-last` so Codex retains its own prior findings and Codex's
-  triage decisions. The documented REFACTOR exception applies if a resumed read-only
+- On the default `codex` path, CRITIQUE calls never pass `--write` — this is
+  enforced by the underlying `codex-companion.mjs` sandbox (`workspace-write` vs
+  `read-only`), not just a prompt convention. Don't describe it as a soft/optional
+  guarantee on that path. This includes every Codex elevated-assurance lens and the
+  exit challenger — none of them ever pass `--write`. Non-Codex guarantees and
+  mandatory mutation detection are defined in `references/backend-selection.md`.
+- On the default `codex` path, after the first CRITIQUE in a cycle, every subsequent
+  CRITIQUE and normal REFACTOR call passes `--resume-last` so Codex retains its own
+  prior findings and Claude's triage decisions. The documented REFACTOR exception
+  applies if a resumed read-only
   session rejects `--resume-last --write`: compare a before/after snapshot (untracked
   status, tracked diff, content hashes — `git diff --check` alone doesn't prove
   nothing changed) and, only if they match, start a fresh non-resumed session with
   `--write` from the beginning instead of retrying the resume. Elevated assurance adds
   further exceptions to the blanket "every subsequent call resumes" rule: the initial
   3 lenses are fresh, the canonicalization call after fan-in is fresh, and the exit
-  challenger is fresh and deliberately becomes the new canonical thread — only the
-  calls between those points resume as usual.
+  challenger is fresh and deliberately becomes the new canonical thread on that
+  Codex path — only the calls between those points resume as usual. The
+  `backend: claude` elevated path has no canonical thread or `--resume-last`; follow
+  `references/backend-selection.md`.
 - DEBATE (node 5) must classify every finding as valid / debatable / false positive —
   never a flat pass/fail — and false-positive rulings need one line of written
   justification, not silent discard. This holds under elevated assurance too:

@@ -105,23 +105,49 @@ not a structured argument after the skill name).
 
 **PRE-FLIGHT resolution (new sub-decision, node 0).** Once per cycle entry,
 alongside quality gate and checkpoint-commit policy: parse the `backend:`
-directive if present (default `codex` if absent). Persist the resolution
-under `### Backend` in this file before IMPL. If `backend: claude:<alias>`
-is given, resolve `<alias>` to a reachable session via `ListAgents` *at
-PRE-FLIGHT*, before SPEC — if no matching session is found, abort with a
-clear message (same escalate-don't-guess posture as an unreachable Codex
-plugin) rather than silently falling back to `claude` or `codex`.
+directive if present (default `codex` if absent). If `backend:` appears more
+than once with conflicting values across the initial prompt and `/goal`,
+stop and ask — never guess by source order. Persist the resolution under
+`### Backend` in this file before IMPL. **Every non-`codex` selection —
+`claude` as well as `claude:<alias>` — requires explicit user confirmation
+before the first dispatch**, because both hand a writer full ambient tool
+authority with no Codex-equivalent sandbox; disclosure alone is not
+authorization, and confirmation is not limited to the alias case. For
+`backend: claude:<alias>`, additionally resolve `<alias>` to a reachable
+session via `ListAgents` *at PRE-FLIGHT*, before SPEC, and display the exact
+identity `ListAgents` reports for the user to confirm — reachability alone
+is best-effort account addressing, not authorization, and not repository
+root/worktree/branch/HEAD verification; a session can confirm completion of
+a dispatch while having operated on a different checkout entirely, and
+nothing in this design can detect that. If no matching session is found, the
+match is ambiguous, or confirmation isn't given, abort with a clear message
+(same escalate-don't-guess posture as an unreachable Codex plugin) rather
+than silently falling back to `claude` or `codex`. **Elevated assurance is
+incompatible with `claude:<alias>`** (one retained conversation cannot supply
+3 independent fresh lenses) — reject that combination at PRE-FLIGHT and ask
+the user to choose `codex`, `claude`, or standard mode instead.
 
 **Mandatory disclosure when `backend != codex`.** PRE-FLIGHT must state to
-the user, once, in plain terms, before SPEC: this cycle will use the same
-underlying model for both writer and reviewer roles, so the "different model
-in the decision path" mitigation this skill is built around
-(README.md:396-404) does not apply this run; DEBATE arbitration and the
-anti-loop cutoff still apply, but they no longer compensate for a
-same-model blind spot the way they do against Codex. This disclosure text
-is also persisted under `### Backend` in this file, not just spoken once and
-discarded — future CRITIQUE/DEBATE steps must not narrate it as "independent
-review."
+the user, once, in plain terms, before SPEC, and persist under `### Backend`
+in this file — not just spoken once and discarded:
+1. Same-model diversity loss: this cycle uses the same underlying model for
+   both writer and reviewer roles, so the "different model in the decision
+   path" mitigation this skill is built around (README.md:396-404) does not
+   apply this run; DEBATE arbitration and the anti-loop cutoff still apply,
+   but they no longer compensate for a same-model blind spot the way they do
+   against Codex.
+2. Ambient authority: the selected Claude writer runs with the orchestrating
+   session's full ambient shell, network, git, and credential authority, with
+   no Codex-equivalent workspace-write sandbox or capability restriction —
+   this skill cannot currently provide an equivalent sandbox for Claude
+   writers.
+3. For `claude:<alias>` specifically: the feature contract, findings, and
+   triage history are sent to a different account/session and are subject to
+   that session's own tools, hooks, and retention — avoid this backend for
+   contracts containing secrets or sensitive data; this skill does not
+   redact or scan payloads before sending them.
+Future CRITIQUE/DEBATE steps must not narrate a non-Codex review as
+"independent review."
 
 **Per-backend node behavior:**
 
@@ -132,33 +158,57 @@ review."
   - IMPL/REFACTOR (writer): `Agent(subagent_type: "general-purpose", ...)`,
     instructed to implement the contract in `PROJECT_CONTEXT.md` directly
     with Edit/Write — this agent, not the orchestrating Claude, performs the
-    edit, so the core invariant ("Claude [[the orchestrator]] never edits
+    edit, so the core invariant ("the orchestrating Claude never edits
     implementation files") holds; it is a distinct actor the orchestrator
     dispatches to, structurally the same relationship the orchestrator has
-    to Codex today.
-  - CRITIQUE (reviewer): `Agent(subagent_type: "Explore", ...)` — chosen
-    specifically because `Explore`'s tool list structurally excludes
-    Edit/Write/NotebookEdit (per its own definition: "All tools except
-    Agent, Artifact, ExitPlanMode, Edit, Write, NotebookEdit"). This gives a
-    **structural** read-only guarantee comparable in kind (not in strength —
-    see Risks) to Codex's `workspace-write`/`read-only` sandbox distinction,
-    rather than a prompt-only promise.
+    to Codex today, but with none of Codex's sandbox isolation (see
+    disclosure point 2 above).
+  - CRITIQUE (reviewer): `Agent(subagent_type: "Explore", ...)`. `Explore`'s
+    tool list excludes the direct editor tools `Edit`/`Write`/`NotebookEdit`
+    (and `Agent`/`Artifact`/`ExitPlanMode`) — that is a **tool-list
+    restriction, not a sandbox guarantee**: `Explore` retains Bash/shell
+    access and is not structurally prevented from mutating files. Mitigate
+    with mandatory mutation detection: capture the artifact-identity digest
+    (SHA-256 over `git rev-parse HEAD` + `git status --porcelain=v1 -uall` +
+    `git diff HEAD --binary`, per `elevated-assurance.md`) immediately before
+    every `Explore` reviewer call and recompute/compare it after; any
+    mismatch is a stop-and-escalate condition, standard or elevated mode
+    alike.
   - Continuity across CRITIQUE calls: plain `Agent()` subagents do not carry
     memory between calls the way `--resume-last` does for Codex. Every
     CRITIQUE call in `backend: claude` mode must therefore include an
     explicit continuity summary (prior findings, triage verdicts, still-
     applicable constraints) built by the orchestrator from
-    `PROJECT_CONTEXT.md` and its own conversation memory — this is the same
-    technique `SKILL.md` node 6 already documents for the "fresh REFACTOR
-    fallback" case, generalized here to every call instead of a fallback-only
-    path.
+    `PROJECT_CONTEXT.md` and its own conversation memory — this is the
+    backend's entire continuity state; there is no separate canonical-thread
+    concept the way Codex's `--resume-last` has one.
+  - **Elevated assurance for this backend**: dispatch 3 independent fresh
+    `Explore` agents in parallel for the 3 lenses (mirroring Codex's 3-lens
+    sweep) instead of one reviewer. After all 3 complete with matching
+    artifact identity, Claude performs fan-in and canonicalization itself —
+    normalizing the raw reports and updating the manually-maintained
+    continuity summary above. There is no Codex-style canonicalization call
+    or canonical thread for this backend; every later ordinary CRITIQUE or
+    reinjection is another fresh `Explore` call carrying the up-to-date
+    summary. The exit challenger remains the deliberately cold exception
+    (fresh, no prior ledger) exactly as `elevated-assurance.md` defines.
 
 - **`claude:<account-alias>` (cross-session).**
-  - The orchestrator uses `SendMessage` to the resolved session for both
-    IMPL/REFACTOR and CRITIQUE, and awaits its reply/notification before
-    advancing to the next node — this makes node sequencing asynchronous for
-    this backend only; document this as a structural difference, not a
-    defect.
+  - The orchestrator uses `SendMessage` to the resolved, user-confirmed
+    session for both IMPL/REFACTOR and CRITIQUE, and advances only when a
+    reply clearly answers that specific dispatch (named by feature, node,
+    and expected response) — an unrelated or ambiguous reply is not
+    completion. This skill has no request-correlation ID, automated
+    timeout, disconnect recovery, or retry mechanism: this is a best-effort
+    causal convention, not a guarantee. If the target stops responding, stop
+    and ask the user to help unblock it rather than redispatching or
+    guessing completion. This makes node sequencing asynchronous for this
+    backend only — a structural difference, not a defect.
+  - A confirmed session identity plus a matching local artifact digest still
+    does not prove the target operated on the orchestrator's actual
+    repository, worktree, branch, or HEAD — this design has no mechanism to
+    verify that and does not claim to; the digest only proves the
+    orchestrator's own local tree didn't drift.
   - **Both roles target the same session by default**, because this skill
     has no mechanism to launch a new OS-level Claude Code process under a
     given account — it can only address sessions that already exist,
@@ -167,14 +217,21 @@ review."
     the **weakest** writer/reviewer isolation of the three backends, weaker
     than `backend: claude`'s fresh-`Explore`-subagent reviewer, despite
     sounding the most separated because it's a different account/process.
-    State this explicitly wherever this backend is documented — do not let
-    "different account" read as "different reviewer."
-  - CRITIQUE's read-only-ness here is **prompt-only** — there is no sandbox
-    or tool-list enforcement across a cross-session `SendMessage` the way
-    there is for Codex's sandbox or same-session `Explore`. Document this
-    gap explicitly next to the claim, per this skill's existing "read-only
-    is enforced, not just requested" framing for Codex CRITIQUE — this
-    backend cannot make the same claim.
+    Per-role aliases were ruled out of scope because this skill can only
+    address already-running sessions, not launch new ones, so it cannot
+    guarantee a genuinely separate reviewer session exists. State the
+    weakest-isolation point explicitly wherever this backend is documented —
+    do not let "different account" read as "different reviewer."
+  - CRITIQUE's read-only-ness here is **prompt-only** — `SendMessage` cannot
+    impose a sandbox or remove tools from the remote session, and this is
+    not repaired by `backend: claude`'s tool-list exclusion either. Apply
+    the same mandatory artifact-identity digest (before/after) described
+    above for `backend: claude`; a mismatch is a stop-and-escalate
+    condition.
+  - **This backend cannot run elevated assurance**: one retained target
+    session cannot furnish 3 independent fresh lenses. PRE-FLIGHT rejects
+    the combination (see PRE-FLIGHT resolution above) rather than
+    approximating the sweep.
 
 **Consistency requirement.** `SKILL.md`'s node 2 (IMPL), node 4 (CRITIQUE),
 and node 6 (REFACTOR) each need a backend-dispatch note pointing to a new
@@ -186,11 +243,20 @@ already used for `elevated-assurance.md`. `README.md` gets a short mention
 reference's content, per this repo's own `CLAUDE.md` guidance that
 `README.md` and `SKILL.md` share claims, not layout, and per the existing
 precedent of not duplicating the elevated-write-goal template into
-`README.md`.
+`README.md`. `CLAUDE.md` and `AGENTS.md` (both consuming-repo-agnostic
+governing files, listing the skill's own file map and core invariant) must
+not state Codex-only continuity/sandbox/canonical-thread rules as universal
+— they need to be scoped to "on the default `codex` path" wherever
+`backend-selection.md` documents a different rule for the other backends,
+not just have their opening invariant sentence qualified.
 
 **Explicitly out of scope for this feature** (do not attempt in this
 cycle): spawning new Claude Code sessions/processes for `claude:<alias>`;
 per-role account aliases (e.g. distinct writer vs. reviewer sessions);
-parallel same-model reviewers for sample diversity (mentioned as a possible
-future mitigation, not required now); any change to Codex's own behavior or
-to the default (`codex`) path.
+parallel same-model reviewers for sample diversity beyond the 3-lens
+`backend: claude` elevated-assurance variant defined above; any change to
+Codex's own behavior or to the default (`codex`) path; any mechanism to
+verify a cross-session target's actual workspace/repository identity beyond
+the confirmed session identity and local artifact digest (a known,
+disclosed limitation — see `claude:<account-alias>` above — not something
+this cycle attempts to solve).

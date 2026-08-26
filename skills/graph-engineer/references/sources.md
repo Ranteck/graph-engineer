@@ -38,7 +38,11 @@ design.
   `SendMessage`,** are official Claude Code built-in agent/tool primitives,
   not third-party integrations. `backend-selection.md` uses them for the
   opt-in Claude routing paths and documents their materially different
-  authority, continuity, and isolation properties.
+  authority, continuity, and isolation properties. Their built-in status was
+  verified from the current Claude Code session's own agent/tool listing,
+  which exposes them directly to the session rather than through a
+  third-party or plugin-provided namespace. This was session-surface
+  inspection, not binary or source inspection.
 
 ## Observed, but not independently verified for this skill's use case
 

@@ -202,11 +202,11 @@ Elevated assurance is the optional multi-lens CRITIQUE variant described in
 `elevated-assurance.md`. It is **never implied by any other
 template above** — use this one specifically, and only when you actually want
 3 independent fresh lenses, a canonicalization barrier, and a fresh exit
-challenger before VERIFY, in exchange for a materially higher Codex-call
-floor (5 review calls — 6 total in a clean run of the full 8-node write
-cycle, counting IMPL) and extra Claude context spent on fan-in. This is the
-write-authorized template; substituting "review" into it is not equivalent —
-use the Elevated review-only template below for that.
+challenger before VERIFY. On the default `codex` path, that costs a materially
+higher Codex-call floor (5 review calls — 6 total in a clean run of the full
+8-node write cycle, counting IMPL) and extra Claude context spent on fan-in.
+This is the write-authorized template; substituting "review" into it is not
+equivalent — use the Elevated review-only template below for that.
 This template targets the full 8-node write cycle (with SPEC). For
 refactor-only — which has no SPEC and no VERIFY node — use the dedicated
 Elevated refactor-only template instead of this one.
@@ -215,6 +215,12 @@ Elevated refactor-only template instead of this one.
 ```
 /goal Use graph-engineer's elevated-assurance mode
 (references/elevated-assurance.md) for [feature] in [file/folder or scope]:
+Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
+language in this template applies only to backend: codex. For a confirmed
+backend: claude selection, follow references/backend-selection.md instead:
+3 parallel fresh Explore lenses with Claude's own canonicalization, no
+separate canonicalization call, and no Codex budget consumed. backend:
+claude:<account-alias> is incompatible with elevated assurance.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-data-loss) reviewed the implementation,
 Claude normalized and fan-in'd their findings with corroboration recorded as
@@ -281,8 +287,15 @@ never silently degrade to reporting only one lens's output.
 
 ```
 /goal Use graph-engineer's elevated-assurance review-only mode
-(references/elevated-assurance.md) over [scope]: 3 fresh independent lenses
-(correctness-contracts, integration-state-reproducibility, security-abuse-
+(references/elevated-assurance.md) over [scope].
+Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
+language in this template applies only to backend: codex. For a confirmed
+backend: claude selection, follow references/backend-selection.md instead:
+3 parallel fresh Explore lenses with Claude's own canonicalization, no
+separate canonicalization call, and no Codex budget consumed. backend:
+claude:<account-alias> is incompatible with elevated assurance.
+3 fresh independent lenses (correctness-contracts, integration-state-
+reproducibility, security-abuse-
 data-loss) reviewed it read-only, Claude normalized their findings with
 corroboration as metadata only (never a fourth verdict), and a fresh
 canonicalization call adopted that ledger to support at most one batched
@@ -326,8 +339,15 @@ below — don't combine both caps into one run.
 ```
 /goal Use graph-engineer's refactor-only entry path with elevated-assurance
 mode (references/elevated-assurance.md) over the current working tree
-(without --base): the first CRITIQUE traversal used 3 fresh independent
-lenses (correctness-contracts, integration-state-reproducibility, security-
+(without --base).
+Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
+language in this template applies only to backend: codex. For a confirmed
+backend: claude selection, follow references/backend-selection.md instead:
+3 parallel fresh Explore lenses with Claude's own canonicalization, no
+separate canonicalization call, and no Codex budget consumed. backend:
+claude:<account-alias> is incompatible with elevated assurance.
+The first CRITIQUE traversal used 3 fresh independent lenses (correctness-
+contracts, integration-state-reproducibility, security-
 abuse-data-loss), Claude normalized and fan-in'd their findings with
 corroboration recorded as metadata only (never a fourth verdict, never a
 substitute for evidence), and a fresh canonicalization call adopted that
