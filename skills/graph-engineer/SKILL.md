@@ -1,18 +1,21 @@
 ---
 name: graph-engineer
 description: >-
-  Orchestrates a Claude↔Codex cycle where Claude Code designs the contract and arbitrates, while Codex (via the official openai/codex-plugin-cc plugin) writes, adversarially reviews, and fixes the code — Claude never edits implementation files. Use when the user asks to "implement with Codex", "have Codex review and fix", "peer review with Codex", "graph engineering", "orchestrator-workers with Codex", or wants an autonomous Claude+Codex implement→review→debate→refactor loop. (ES triggers: "implementar con Codex", "que Codex revise y corrija", "peer review con Codex", "graph engineering", "orchestrator-workers con Codex")
+  Orchestrates a Claude↔Codex cycle where Claude Code designs the contract and arbitrates, while Codex by default (via the official openai/codex-plugin-cc plugin) writes, adversarially reviews, and fixes the code — the orchestrating Claude never edits implementation files. A per-cycle backend directive can opt into Claude workers instead without changing the Codex default. Use when the user asks to "implement with Codex", "have Codex review and fix", "peer review with Codex", "graph engineering", "orchestrator-workers with Codex", or wants an autonomous Claude+Codex implement→review→debate→refactor loop. (ES triggers: "implementar con Codex", "que Codex revise y corrija", "peer review con Codex", "graph engineering", "orchestrator-workers con Codex")
 ---
 
 # Graph Engineer
 
 An **Evaluator-Optimizer** cycle (an official Anthropic pattern, see
 `references/sources.md`) nested inside an **Orchestrator-Workers** pattern:
-the user is the orchestrator, Claude is the sub-orchestrator, and Codex is
-both the worker that implements and the evaluator that critiques. The hard
-rule across the whole flow: **Claude never edits implementation files** with
-Edit/Write — only Codex does, via the `codex:codex-rescue` subagent. That is
-what keeps the writer and arbiter roles explicit.
+the user is the orchestrator, Claude is the sub-orchestrator, and Codex is by
+default both the worker that implements and the evaluator that critiques. The
+hard rule across the whole flow: **the orchestrating Claude never edits
+implementation files** with Edit/Write — the writer selected during
+PRE-FLIGHT does. That writer is unconditionally Codex, via the
+`codex:codex-rescue` subagent, unless the user explicitly opts into a Claude
+backend for that cycle. This is what keeps the writer and arbiter roles
+explicit.
 
 This split has three independent motivations:
 
@@ -61,7 +64,7 @@ command surface or flag semantics could silently break these assumptions —
 if the cycle starts behaving unexpectedly, check the installed plugin
 version first.
 
-## Single entry point: `codex:codex-rescue`
+## Single Codex entry point: `codex:codex-rescue`
 
 Every interaction with Codex in this cycle goes through one subagent:
 
@@ -240,7 +243,8 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    that can reach IMPL or REFACTOR and therefore authorize writes. Review-only
    mode instead uses the lighter PRE-FLIGHT variant defined in
    `references/goal-templates.md`: it requires readable repo/scope and a
-   reachable Codex capable of producing the CRITIQUE report, but does not
+   reachable selected review backend capable of producing the CRITIQUE
+   report, but does not
    require a clean tree, a non-`main` branch, a writable filesystem,
    `PROJECT_CONTEXT.md` writes, or QUALITY GATE resolution/execution.
 
@@ -254,6 +258,22 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    top of existing uncommitted work or directly on `main`. This is what makes
    the "always enter on a branch with a clean working tree" rule under Risks an
    enforced check instead of a hope.
+
+   **Backend resolution.** Resolve the `backend:` directive once per cycle
+   entry for every mode. The accepted values are `codex`, `claude`, and
+   `claude:<account-alias>`; omission always resolves to `codex`, without a
+   prompt or inference. In write-authorized modes, persist the resolution
+   under `### Backend` in the current feature's `PROJECT_CONTEXT.md` section
+   before IMPL (or before refactor-only's initial CRITIQUE). For
+   `claude:<account-alias>`, resolve the alias through `ListAgents` before
+   SPEC and abort clearly if no unambiguous reachable match exists — never
+   fall back silently. When the backend is not `codex`, give and persist the
+   mandatory same-model disclosure before SPEC. Review-only records the
+   resolution and any disclosure in the prompt, turn, and final report
+   instead of writing `PROJECT_CONTEXT.md`. Read and follow
+   `references/backend-selection.md`; it defines the persisted schema,
+   disclosure text, alias lookup, per-node dispatch, continuity rules, and
+   guarantee differences.
 
    Also resolve the current feature's QUALITY GATE during PRE-FLIGHT for every
    write-authorized mode: before IMPL in the full 8-node write cycle, and
@@ -275,8 +295,9 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    exists, stop before IMPL or the initial refactor-only CRITIQUE. In
    autonomous `/goal` runs, treat this as an escalation condition, never a
    silent skip. `PROJECT_CONTEXT.md` is Claude's only writable artifact across
-   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata,
-   and — see immediately below — writes `### Critique assurance` too, but
+   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata
+   and the `### Backend` resolution, and — see immediately below — writes
+   `### Critique assurance` too, but
    only in refactor-only (there is no SPEC there to defer to). In the
    full 8-node write cycle, PRE-FLIGHT only *evaluates* elevated-assurance
    triggers here; it writes nothing for `### Critique assurance` yet — SPEC
@@ -294,10 +315,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    code already on disk.
 
    Between the successful cycle-entry clean check and IMPL starting, the only
-   expected tree changes are this cycle's own namespaced QUALITY GATE
-   resolution, `Critique assurance` resolution, and feature contract in
-   `PROJECT_CONTEXT.md`. Recheck that narrow window before IMPL and abort if
-   any other path or unrelated delta appears.
+   expected tree changes are this cycle's own namespaced QUALITY GATE,
+   `Backend`, and `Critique assurance` resolutions plus the feature contract
+   in `PROJECT_CONTEXT.md`. Recheck that narrow window before IMPL and abort
+   if any other path or unrelated delta appears.
 
    **Checkpoint commit policy.** Also decide, once per cycle entry, whether
    Claude will create local checkpoint commits after each passing QUALITY
@@ -314,9 +335,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
    does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
    Claude's only writable artifact across the entire cycle: PRE-FLIGHT writes
-   the `### Quality gate` resolution metadata there, and SPEC writes the
-   feature contract and finalizes `### Critique assurance` there (see
-   immediately below). Claude never edits implementation files.
+   the `### Quality gate` and `### Backend` resolution metadata there, and
+   SPEC writes the feature contract and finalizes `### Critique assurance`
+   there (see immediately below). The orchestrating Claude never edits
+   implementation files.
 
    In the full 8-node write cycle (not refactor-only), re-evaluate the
    elevated-assurance triggers here against the actual contract just written
@@ -337,13 +359,22 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    contaminating or being contaminated by an unrelated feature's contract
    in the same file.
 
-2. **IMPL** (Codex writes) —
+2. **IMPL** (selected backend writes; Codex by default) —
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Implement [feature]
    following the contract in PROJECT_CONTEXT.md. --write")
    ```
 
-3. **QUALITY GATE** (Claude runs mechanical checks; Codex fixes) — Revalidate
+   **Backend dispatch.** The invocation above is the unchanged default
+   `codex` path. For `claude` or `claude:<account-alias>`, dispatch the
+   selected writer exactly as `references/backend-selection.md` specifies;
+   do not inline or improvise substitute prompts here. The invariant is that
+   the selected writer performs the implementation edit while the
+   orchestrating Claude remains the contract owner and never uses Edit/Write
+   on implementation files. Every backend returns to node 3.
+
+3. **QUALITY GATE** (Claude runs mechanical checks; the selected writer fixes)
+   — Revalidate
    the cached resolution, snapshot both `git status --porcelain=v1 -uall` and
    `git diff HEAD --binary`, then execute the persisted check-only command with
    its exact cwd and a timeout. Mutating, auto-fix, and write-mode commands are
@@ -424,9 +455,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    file. It authorizes checkpoint commits only — never editing file content,
    never `push`, never rewriting history.
 
-4. **CRITIQUE** (Codex critiques, adversarially, no writes) — The first
-   CRITIQUE call in a cycle starts a fresh thread. Every CRITIQUE call after
-   that—including one reached from a VERIFY failure—must pass
+4. **CRITIQUE** (selected backend critiques, adversarially, no writes; Codex
+   by default) — On the default Codex path, the first CRITIQUE call in a
+   cycle starts a fresh thread. Every CRITIQUE call after that—including one
+   reached from a VERIFY failure—must pass
    `--resume-last`, so Codex retains memory of its own prior findings and of
    Claude's prior triage decisions, instead of restating findings that were
    already ruled debatable or false-positive. **This blanket rule has
@@ -486,6 +518,16 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    ```
    Return the findings verbatim first, without summarizing.
 
+   **Backend dispatch.** The invocations and `--resume-last` rules above are
+   the unchanged default `codex` path. For `claude` or
+   `claude:<account-alias>`, follow
+   `references/backend-selection.md` in full for reviewer selection, manual
+   continuity, and the exact strength of the read-only guarantee; do not
+   inline alternate prompt families here. Every backend must preserve the
+   adversarial scope, return findings before Claude triages them, and leave
+   valid/debatable/false-positive arbitration to node 5. A non-Codex review
+   must never be narrated as independent or cross-model review.
+
    **Elevated assurance (opt-in variant).** When `### Critique assurance` in
    `PROJECT_CONTEXT.md` (or, in review-only, the user's explicit request)
    resolves to `mode: elevated`, the first CRITIQUE traversal of the cycle
@@ -506,7 +548,8 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    `mode: elevated`. In review-only, require the user's explicit request to be
    recorded in the prompt, the Claude turn, and the final report.
 
-   **Read-only is enforced, not just requested.** CRITIQUE's read-only
+   **On the default Codex path, read-only is enforced, not just requested.**
+   CRITIQUE's read-only
    behavior isn't a soft prompt instruction Codex could ignore — the
    underlying `codex-companion.mjs` script sets
    `sandbox: request.write ? "workspace-write" : "read-only"`. As long as the
@@ -517,12 +560,14 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
 
 5. **DEBATE / TRIAGE** (Claude, read-only, cheap) — Classify each finding:
    - **Valid** → goes to node 6 as-is.
-   - **Debatable** → reinjected to `codex:codex-rescue` with the explicit
-     counterargument ("Codex flagged X, but Y because Z — do you stand by it
-     or reconsider?"), always with `--resume-last` and never `--write`, so
-     the reinjection stays on the same thread instead of becoming the
-     "latest" session that a later REFACTOR's `--resume-last` might
-     mistakenly resume. Its reply is awaited before deciding.
+   - **Debatable** → reinjected to the selected reviewer with the explicit
+     counterargument ("The reviewer flagged X, but Y because Z — do you stand
+     by it or reconsider?"). On the default Codex path, always use
+     `codex:codex-rescue` with `--resume-last` and never `--write`, so the
+     reinjection stays on the same thread instead of becoming the "latest"
+     session that a later REFACTOR's `--resume-last` might mistakenly resume.
+     Non-Codex backends use the continuity mechanism in
+     `references/backend-selection.md`. Await the reply before deciding.
    - **False positive** → discarded, with one line of written justification
      (never silent acceptance or silent rejection).
    Without this step Codex self-reviews with no filter, and the cycle can
@@ -545,9 +590,10 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    terminates after DEBATE/report and no finding routes to node 6 REFACTOR,
    because review-only never authorizes a write.
 
-   **Claude may read, never edit, implementation files during triage.**
-   "Claude never edits implementation files" (see intro) is about Edit/Write,
-   not about Read/Grep. Before ruling a finding valid or false-positive —
+   **The orchestrating Claude may read, never edit, implementation files
+   during triage.** "The orchestrating Claude never edits implementation
+   files" (see intro) is about Edit/Write, not about Read/Grep. Before ruling
+   a finding valid or false-positive —
    especially before writing a false-positive justification — Claude should
    Read/Grep the specific lines or files the finding references to verify
    the claim rather than triage blind. This is cheap (a handful of lines,
@@ -574,11 +620,19 @@ first CRITIQUE, which also precedes any IMPL or REFACTOR write.
    Codex model — do not present N-lens agreement as independent verification
    either.
 
-6. **REFACTOR** (Codex fixes) —
+6. **REFACTOR** (selected backend fixes; Codex by default) —
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Apply the following
    agreed fixes: [triaged list]. --resume-last --write")
    ```
+
+   **Backend dispatch.** The invocation and recovery protocol below are the
+   unchanged default `codex` path. For `claude` or
+   `claude:<account-alias>`, dispatch the selected writer and carry forward
+   triage continuity exactly as `references/backend-selection.md` specifies;
+   do not inline alternate prompt families here. The selected writer applies
+   only the agreed fixes, and every backend returns to node 3 before another
+   CRITIQUE.
 
    A Codex session created read-only may not upgrade to write access through
    `--resume-last --write`. If the sandbox rejects that transition, confirm

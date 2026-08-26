@@ -1,6 +1,7 @@
 # graph-engineer
 
-A Claude Code skill for a common problem: you want a second model (Codex) to
+A Claude Code skill for a common problem: by default, you want a second model
+(Codex) to
 apply the code while Claude preserves context for orchestration and judgment,
 and you don't want Codex grading its own homework without arbitration.
 `graph-engineer` makes Claude the orchestrator and arbiter, and Codex the one
@@ -267,7 +268,8 @@ Review-only is 1 in both columns because it never refactors — it reports and
 stops. The other two reach their one-fix number by adding REFACTOR plus the
 re-review CRITIQUE after it.
 
-Only IMPL, CRITIQUE, and REFACTOR are Codex calls; the other nodes are Claude.
+On the default `codex` backend, only IMPL, CRITIQUE, and REFACTOR are Codex
+calls; the other nodes are Claude.
 QUALITY GATE reaches Codex only when a mechanical check fails, and DEBATE only
 when a "debatable" finding is reinjected (see the
 [sub-loop](#the-cycle-8-nodes) above). [Elevated
@@ -286,6 +288,27 @@ as a contract hasn't earned a write cycle — read it yourself, or use
 review-only. Naming isn't automatically exempt: a local variable's name has no
 blast radius, but a term other files reference as a contract does, and getting
 that wrong propagates silently.
+
+### Backend selection (optional)
+
+IMPL, CRITIQUE, and REFACTOR can opt into a different backend for one cycle by
+putting `backend: codex`, `backend: claude`, or
+`backend: claude:<account-alias>` in the `/goal` text or initial prompt.
+Omitting the directive unconditionally keeps the existing `codex` default;
+the diagrams, standard call counts, and Codex invocations elsewhere in this
+README describe that default path.
+
+This option changes only the per-cycle writer/reviewer dispatch. PRE-FLIGHT
+resolves and records it, and nodes 2/4/6 apply it without changing the 8-node
+cycle; see [nodes 0, 2, 4, and 6 in `SKILL.md`](skills/graph-engineer/SKILL.md#the-cycle-8-nodes)
+and the detailed
+[`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md).
+
+Honest caveat: any backend other than `codex` uses the same underlying Claude
+model for writer and reviewer, so it gives up the different-model mitigation
+described under [Less correlated self-review failure](#why) for that run.
+DEBATE and the anti-loop cutoff still apply, but do not restore cross-model
+diversity.
 
 ## Usage
 
