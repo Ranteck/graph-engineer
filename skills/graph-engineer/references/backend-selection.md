@@ -215,6 +215,12 @@ remaining lens, artifact-identity, budget, and exit-challenger invariants in
 `elevated-assurance.md` still apply, with fresh `Explore` calls wherever a
 reviewer is required.
 
+Because Claude performs both fan-in and canonicalization on this backend,
+there is no independent second pass auditing the accuracy of Claude's merge/
+normalization of the 3 raw lens reports; on the default `codex` path, the
+separate canonicalization reviewer challenges Claude's normalization against
+those raw reports.
+
 #### Manual continuity summaries
 
 Plain `Agent()` subagents do not have a `--resume-last`-style memory channel.

@@ -215,55 +215,63 @@ Elevated refactor-only template instead of this one.
 ```
 /goal Use graph-engineer's elevated-assurance mode
 (references/elevated-assurance.md) for [feature] in [file/folder or scope]:
-Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
-language in this template applies only to backend: codex. For a confirmed
+Backend qualification: separate canonicalization calls, canonical-thread
+ownership, --resume-last, Codex writer/reviewer reachability, and Codex call
+floors/budgets in this template apply only to backend: codex. For a confirmed
 backend: claude selection, follow references/backend-selection.md instead:
-3 parallel fresh Explore lenses with Claude's own canonicalization, no
-separate canonicalization call, and no Codex budget consumed. backend:
+the selected Claude writer/reviewer, 3 parallel fresh Explore lenses with
+Claude's own canonicalization, and no separate canonicalization call,
+canonical thread, --resume-last, or Codex budget consumed. backend:
 claude:<account-alias> is incompatible with elevated assurance.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-data-loss) reviewed the implementation,
 Claude normalized and fan-in'd their findings with corroboration recorded as
-metadata only (never a fourth verdict, never a substitute for evidence), a
-fresh canonicalization call adopted that ledger, and — after DEBATE first
-reports no valid findings remaining — the most recent fresh exit challenger
-reviewed the final artifact cold with no valid findings before VERIFY
+metadata only (never a fourth verdict, never a substitute for evidence), the
+selected backend's canonicalization step adopted that ledger, and — after
+DEBATE first reports no valid findings remaining — the most recent fresh exit
+challenger reviewed the final artifact cold with no valid findings before VERIFY
 (re-run fresh after any REFACTOR triggered by an earlier exit challenger
 pass, until one pass finds nothing against the then-current artifact).
 Persist mode: elevated in
 PROJECT_CONTEXT.md's
-### Critique assurance before IMPL. Code is written and fixed by Codex via
-graph-engineer only (Claude does not edit implementation files directly).
+### Critique assurance before IMPL. Code is written and fixed by the selected
+backend's writer via graph-engineer only (the orchestrating Claude does not
+edit implementation files directly).
 Stop condition: [your verifiable criterion] AND no valid findings remain
-from any lens, the canonicalization pass, or the exit challenger (debatable
+from any lens, the canonicalization step, or the exit challenger (debatable
 ones get debated, not accepted blindly).
-Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
-canonicalization counts as one pass) and at most 13 total Codex review/
-debate calls for this activation — these are adjustable starting points, not
-derived constants; the structural review floor is 5 calls (3 lenses +
-canonicalization + exit challenger), while the clean total floor is 6 after
-counting IMPL. If either cap is reached without satisfying the stop
-condition, stop and report the remaining findings instead of continuing. If
+Elevated-mode pass cap for either compatible backend: at most 5 CRITIQUE
+passes (the initial 3-lens sweep plus the selected backend's canonicalization
+counts as one pass). On backend: codex only, allow at most 13 total Codex
+review/debate calls for this activation — an adjustable starting point, not a
+derived constant; that path's structural review floor is 5 calls (3 lenses +
+canonicalization + exit challenger), while its clean total floor is 6 after
+counting IMPL. backend: claude consumes no Codex budget. If an applicable cap
+is reached without satisfying the stop condition, stop and report the
+remaining findings instead of continuing. If
 the same underlying finding persists for 2 rounds in a row with no net code
 change, stop and tell me instead of continuing — this is the skill's own
 floor and applies even if you'd otherwise keep going.
 If a lens finishes after canonicalization began, apply the documented
 late-lens recovery from references/elevated-assurance.md: wait for every
 lens to reach a terminal state, merge the late result into the finding ledger,
-and start a replacement fresh canonicalization call instead of treating
-this alone as a stop condition. Recompute and compare the artifact-identity
-digest both before dispatching each lens/canonicalization/exit-challenger
-call and immediately after it completes; any mismatch means the reviewed
-artifact is no longer current. If the elevated-assurance resolution is
-missing or ambiguous, any required lens fails to return, that late-lens recovery
-itself cannot establish terminal state or ledger completeness, canonical
-latest-thread ownership still cannot be established after recovery, an
-artifact-identity digest mismatch is detected at any of those checkpoints, the
-digest cannot be constructed/recomputed or equality cannot be proven, the
-required exit challenger cannot run, or the persisted Codex review/debate
-call budget would be exceeded, stop and report instead of silently
-downgrading to standard CRITIQUE, skipping a required call, discarding the
-mismatch, or invoking --resume-last ambiguously. If no usable quality-gate resolution
+and repeat canonicalization with the complete ledger — start a replacement
+fresh canonicalization call on backend: codex, or redo Claude's own
+canonicalization on backend: claude — instead of treating this alone as a
+stop condition. Recompute and compare the artifact-identity digest both
+before dispatching each reviewer call (lens, backend: codex canonicalization,
+or exit challenger) and immediately after it completes; any mismatch means
+the reviewed artifact is no longer current. If the elevated-assurance
+resolution is missing or ambiguous, any required lens fails to return, that
+late-lens recovery itself cannot establish terminal state or ledger completeness, an
+artifact-identity digest mismatch is detected at any of those checkpoints,
+the digest cannot be constructed/recomputed or equality cannot be proven, or
+the required exit challenger cannot run, stop and report instead of silently
+downgrading to standard CRITIQUE, skipping a required reviewer, or discarding
+the mismatch. On backend: codex, also stop if canonical latest-thread
+ownership still cannot be established after recovery, the persisted Codex
+review/debate call budget would be exceeded, or --resume-last would be
+ambiguous. If no usable quality-gate resolution
 exists and no explicit opt-out was given, or one activation reaches the
 absolute cap of 3 failed QUALITY GATE runs, stop and report instead of
 continuing.
@@ -277,53 +285,62 @@ or no usable safety precondition.
 ## Elevated review-only
 
 No `--write`, same as the standard-mode review-only template, but with the
-3-lens sweep, fan-in, and one canonicalization call instead of a single
-reviewer.
+3-lens sweep, fan-in, and the selected backend's canonicalization step instead
+of a single reviewer. On the default `codex` path that step is one separate
+canonicalization call; `backend: claude` performs it itself with no separate
+call.
 No REFACTOR, QUALITY GATE, VERIFY, or exit challenger — there is no final
-artifact distinct from what was just reviewed. Recommended reviewer budget:
-5 calls (the clean structural floor is 4: 3 lenses + canonicalization, plus
-at most 1 batched debatable reinjection). An incomplete lens sweep escalates;
+artifact distinct from what was just reviewed. On the default `codex` path,
+the recommended reviewer budget is 5 calls (the clean structural floor is 4:
+3 lenses + canonicalization, plus at most 1 batched debatable reinjection).
+`backend: claude` consumes no Codex budget. An incomplete lens sweep escalates;
 never silently degrade to reporting only one lens's output.
 
 ```
 /goal Use graph-engineer's elevated-assurance review-only mode
 (references/elevated-assurance.md) over [scope].
-Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
-language in this template applies only to backend: codex. For a confirmed
+Backend qualification: separate canonicalization calls, canonical-thread
+ownership, --resume-last, Codex reviewer reachability, and Codex call floors/
+budgets in this template apply only to backend: codex. For a confirmed
 backend: claude selection, follow references/backend-selection.md instead:
-3 parallel fresh Explore lenses with Claude's own canonicalization, no
-separate canonicalization call, and no Codex budget consumed. backend:
-claude:<account-alias> is incompatible with elevated assurance.
+3 parallel fresh Explore lenses with Claude's own canonicalization and no
+separate canonicalization call, canonical thread, --resume-last, or Codex
+budget consumed. backend: claude:<account-alias> is incompatible with
+elevated assurance.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-
 data-loss) reviewed it read-only, Claude normalized their findings with
-corroboration as metadata only (never a fourth verdict), and a fresh
-canonicalization call adopted that ledger to support at most one batched
-reinjection for debatable findings. I'm not authorizing --write in this
+corroboration as metadata only (never a fourth verdict), and the selected
+backend's canonicalization step adopted that ledger to support at most one
+batched reinjection for debatable findings. I'm not authorizing --write in this
 cycle — the goal is a triaged, lens-attributed findings report (valid/
 debatable/false positive) so I can decide manually what to apply. Stop as
 soon as the report and triage are complete, without moving to REFACTOR.
-Clean structural floor: 4 Codex review/total calls (3 lenses +
-canonicalization). Recommended reviewer budget: 5 Codex calls total for this
-activation, allowing at most 1 batched debatable reinjection. If a lens
+On backend: codex only, the clean structural floor is 4 Codex review/total
+calls (3 lenses + canonicalization), and the recommended reviewer budget is 5
+Codex calls total for this activation, allowing at most 1 batched debatable
+reinjection. backend: claude consumes no Codex budget. If a lens
 finishes after canonicalization began, apply the documented late-lens
 recovery: wait for every lens to reach a terminal state, merge the late
-result into the finding ledger, and start a replacement fresh
-canonicalization call, rather than treating this alone as a stop condition.
-Recompute and compare the artifact-identity digest both before dispatching
-each lens/canonicalization call and immediately after it completes. If any
+result into the finding ledger, and repeat canonicalization with the complete
+ledger — start a replacement fresh canonicalization call on backend: codex,
+or redo Claude's own canonicalization on backend: claude — rather than treating
+this alone as a stop condition. Recompute and compare the artifact-identity
+digest both before dispatching each reviewer call (lens or backend: codex
+canonicalization) and immediately after it completes. If any
 of the 3 lenses fails to return, that recovery itself cannot establish
 terminal state or ledger completeness, an artifact-identity digest mismatch
 is detected at any of those checkpoints, or the digest cannot be
 constructed/recomputed or equality cannot be proven, stop and escalate
-instead of reporting on fewer than 3 lenses, discarding the mismatch, or
-resuming ambiguously.
-Use the review-only PRE-FLIGHT: require only readable repo/scope, reachable
-Codex, and a CRITIQUE invocation capable of producing the report. A dirty
-working tree, `main` branch, or read-only filesystem is allowed. Do not write
-PROJECT_CONTEXT.md or resolve/run QUALITY GATE. An artifact-identity digest
-mismatch is itself grounds to stop and report, not only an environmental
-failure that prevents CRITIQUE from producing the report.
+instead of reporting on fewer than 3 lenses or discarding the mismatch. On
+backend: codex, also do not invoke --resume-last ambiguously.
+Use the review-only PRE-FLIGHT: require only readable repo/scope, a reachable
+selected review backend, and a CRITIQUE invocation capable of producing the
+report. A dirty working tree, `main` branch, or read-only filesystem is
+allowed. Do not write PROJECT_CONTEXT.md or resolve/run QUALITY GATE. An
+artifact-identity digest mismatch is itself grounds to stop and report,
+not only an environmental failure that prevents CRITIQUE from producing the
+report.
 ```
 
 ## Elevated refactor-only
@@ -333,38 +350,42 @@ Refactor-only template above) with elevated assurance. The one behavior that
 differs from the full 8-node write cycle's elevated template: the exit
 challenger gates entry to **DONE**, not VERIFY, since refactor-only has no
 VERIFY node. This template supersedes the standard-mode Refactor-only
-template's 3-pass cap with elevated mode's own 5-pass cap and 13-call budget
-below — don't combine both caps into one run.
+template's 3-pass cap with elevated mode's own 5-pass cap and, on the default
+`codex` path, 13-call budget below — don't combine both caps into one run.
 
 ```
 /goal Use graph-engineer's refactor-only entry path with elevated-assurance
 mode (references/elevated-assurance.md) over the current working tree
 (without --base).
-Backend qualification: canonical-thread, --resume-last, and Codex-call-budget
-language in this template applies only to backend: codex. For a confirmed
+Backend qualification: separate canonicalization calls, canonical-thread
+ownership, --resume-last, Codex writer/reviewer reachability, and Codex call
+floors/budgets in this template apply only to backend: codex. For a confirmed
 backend: claude selection, follow references/backend-selection.md instead:
-3 parallel fresh Explore lenses with Claude's own canonicalization, no
-separate canonicalization call, and no Codex budget consumed. backend:
+the selected Claude writer/reviewer, 3 parallel fresh Explore lenses with
+Claude's own canonicalization, and no separate canonicalization call,
+canonical thread, --resume-last, or Codex budget consumed. backend:
 claude:<account-alias> is incompatible with elevated assurance.
 The first CRITIQUE traversal used 3 fresh independent lenses (correctness-
 contracts, integration-state-reproducibility, security-
 abuse-data-loss), Claude normalized and fan-in'd their findings with
 corroboration recorded as metadata only (never a fourth verdict, never a
-substitute for evidence), and a fresh canonicalization call adopted that
-ledger. Valid findings were applied by Codex through the sanctioned REFACTOR
-procedure. Persist mode: elevated in PROJECT_CONTEXT.md's
-### Critique assurance during PRE-FLIGHT (there is no SPEC in this entry
-path, so PRE-FLIGHT's evaluation is final). After DEBATE first reports no
-valid findings remaining, the most recent fresh exit challenger reviewed
+substitute for evidence), and the selected backend's canonicalization step
+adopted that ledger. Valid findings were applied by the selected backend's
+writer through the sanctioned REFACTOR procedure. Persist mode: elevated in
+PROJECT_CONTEXT.md's ### Critique assurance during PRE-FLIGHT (there is no
+SPEC in this entry path, so PRE-FLIGHT's evaluation is final). After DEBATE
+first reports no valid findings remaining, the most recent fresh exit challenger reviewed
 the final artifact cold with no valid findings before DONE (re-run fresh
 after any REFACTOR triggered by an earlier exit challenger pass, until one
 pass finds nothing against the then-current artifact).
-Elevated-mode caps: at most 5 CRITIQUE passes (the initial 3-lens sweep plus
-canonicalization counts as one pass) and at most 13 total Codex review/
-debate calls for this activation — these are adjustable starting points, not
-derived constants; the structural review/total floor is 5 calls (3 lenses +
-canonicalization + exit challenger) even in a clean cycle. If either cap is
-reached without satisfying the stop condition, stop and report the
+Elevated-mode pass cap for either compatible backend: at most 5 CRITIQUE
+passes (the initial 3-lens sweep plus the selected backend's canonicalization
+counts as one pass). On backend: codex only, allow at most 13 total Codex
+review/debate calls for this activation — an adjustable starting point, not a
+derived constant; that path's structural review/total floor is 5 calls (3
+lenses + canonicalization + exit challenger) even in a clean cycle. backend:
+claude consumes no Codex budget. If an applicable cap is reached without
+satisfying the stop condition, stop and report the
 remaining findings instead of continuing. If the same underlying finding
 persists for 2 rounds in a row with no net code change, stop and tell me
 instead of continuing — this is the skill's own floor and applies even if
@@ -372,20 +393,23 @@ you'd otherwise keep going.
 If a lens finishes after canonicalization began, apply the documented
 late-lens recovery from references/elevated-assurance.md: wait for every
 lens to reach a terminal state, merge the late result into the finding ledger,
-and start a replacement fresh canonicalization call instead of treating
-this alone as a stop condition. Recompute and compare the artifact-identity
-digest both before dispatching each lens/canonicalization/exit-challenger
-call and immediately after it completes; any mismatch means the reviewed
-artifact is no longer current. If the elevated-assurance resolution is
-missing or ambiguous, any required lens fails to return, that late-lens recovery
-itself cannot establish terminal state or ledger completeness, canonical
-latest-thread ownership still cannot be established after recovery, an
-artifact-identity digest mismatch is detected at any of those checkpoints, the
-digest cannot be constructed/recomputed or equality cannot be proven, the
-required exit challenger cannot run, or the persisted Codex review/debate
-call budget would be exceeded, stop and report instead of silently
-downgrading to standard CRITIQUE, skipping a required call, discarding the
-mismatch, or invoking --resume-last ambiguously. If no usable quality-gate resolution exists and
+and repeat canonicalization with the complete ledger — start a replacement
+fresh canonicalization call on backend: codex, or redo Claude's own
+canonicalization on backend: claude — instead of treating this alone as a
+stop condition. Recompute and compare the artifact-identity digest both
+before dispatching each reviewer call (lens, backend: codex canonicalization,
+or exit challenger) and immediately after it completes; any mismatch means
+the reviewed artifact is no longer current. If the elevated-assurance
+resolution is missing or ambiguous, any required lens fails to return, that
+late-lens recovery itself cannot establish terminal state or ledger completeness, an
+artifact-identity digest mismatch is detected at any of those checkpoints,
+the digest cannot be constructed/recomputed or equality cannot be proven, or
+the required exit challenger cannot run, stop and report instead of silently
+downgrading to standard CRITIQUE, skipping a required reviewer, or discarding
+the mismatch. On backend: codex, also stop if canonical latest-thread
+ownership still cannot be established after recovery, the persisted Codex
+review/debate call budget would be exceeded, or --resume-last would be
+ambiguous. If no usable quality-gate resolution exists and
 no explicit opt-out was given, or one activation reaches the absolute cap
 of 3 failed QUALITY GATE runs, stop and report instead of continuing. If
 PRE-FLIGHT's elevated-assurance risk-trigger evaluation matches and no
@@ -401,9 +425,10 @@ or no usable safety precondition.
 
 - The standard-mode iteration cap (3, used in the templates above) is a
   recommendation, not a fixed value: raise it for large/multi-file tasks,
-  lower it to 1-2 for small changes. Elevated mode uses its own separate cap
-  (5 CRITIQUE passes / 13 calls) documented in `elevated-assurance.md` and
-  the elevated templates — don't conflate the two or combine them in one run.
+  lower it to 1-2 for small changes. Elevated mode uses its own separate
+  5-CRITIQUE-pass cap and, on the default `codex` path, a 13-call budget,
+  documented in `elevated-assurance.md` and the elevated templates — don't
+  conflate those with the standard cap or combine them in one run.
 - The skill's anti-loop cutoff (2 consecutive CRITIQUE passes restating the
   same underlying finding with no net code change) is a separate, harder
   floor — it is not a recommendation and applies regardless of whatever
@@ -420,9 +445,9 @@ or no usable safety precondition.
   modes that may reach IMPL or REFACTOR. Review-only still enters PRE-FLIGHT at
   node 0, but uses its lighter variant above: dirty trees, `main`, read-only
   filesystems, omitted `PROJECT_CONTEXT.md` writes, and omitted QUALITY GATE
-  work are allowed. Escalate only if repo/scope readability, Codex
-  reachability, or another environmental condition actually prevents CRITIQUE
-  from producing its report.
+  work are allowed. Escalate only if repo/scope readability, selected review
+  backend reachability, or another environmental condition actually prevents
+  CRITIQUE from producing its report.
 - `/goal` is a per-turn stop-gate and doesn't survive closing the session.
   Some Claude Code environments offer `/loop` for running across turns
   instead of (or alongside) `/goal`, but its availability, persistence
@@ -439,8 +464,9 @@ or no usable safety precondition.
   elsewhere in this file — don't hand-edit a standard-mode template to add "3
   lenses" without also copying its full stop-clause set; use the dedicated
   elevated templates instead so the permission and escalation contract stays
-  complete. The clean structural floors are 5 review calls / 6 total for the
-  full 8-node write cycle, 5 review/total for refactor-only, and 4
-  review/total for review-only. The 13-call/5-pass defaults are documented in
+  complete. On the default `codex` path, the clean structural floors are 5
+  review calls / 6 total for the full 8-node write cycle, 5 review/total for
+  refactor-only, and 4 review/total for review-only. The default-codex
+  13-call budget and the backend-neutral 5-pass cap are documented in
   `elevated-assurance.md` as adjustable, unbenchmarked ceilings — not as a
-  validated optimum.
+  validated optimum. `backend: claude` consumes no Codex budget.

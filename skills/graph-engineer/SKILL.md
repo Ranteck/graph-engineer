@@ -174,12 +174,15 @@ PRE-FLIGHT (write-authorized) -> CRITIQUE (first pass, fresh thread, current tre
 ```
 
 **Elevated assurance** is an optional, opt-in variant of node 4 (CRITIQUE) —
-it does not add a node and the diagrams above stay exactly as written. It
-replaces a single CRITIQUE call with an initial sweep of 3 independent fresh
-lenses plus a canonicalization call (still counted as one CRITIQUE pass), and
-gates entry to VERIFY (DONE in refactor-only) on a fresh "exit challenger"
-pass that reruns after any REFACTOR it itself triggers, until one pass finds
-nothing:
+it does not add a node and the diagrams above stay exactly as written. On the
+default `codex` path, it replaces a single CRITIQUE call with an initial sweep
+of 3 independent fresh lenses plus a canonicalization call (still counted as
+one CRITIQUE pass), and gates entry to VERIFY (DONE in refactor-only) on a
+fresh "exit challenger" pass that reruns after any REFACTOR it itself triggers,
+until one pass finds nothing. `backend: claude` instead uses 3 parallel fresh
+`Explore` lenses and Claude's own canonicalization, with no separate
+canonicalization call, canonical thread, `--resume-last`, or Codex-call budget
+consumed; `claude:<account-alias>` is incompatible with elevated assurance:
 
 ```
 Elevated assurance expands node 4 only; the node count stays 8:
@@ -559,11 +562,15 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    REFACTOR the exit challenger itself triggers, until one pass finds no
    valid findings against the then-current artifact; see the pass-accounting
    note under Anti-loop cutoff. Every later resumed Codex round in elevated
-   mode still uses `--resume-last` exactly as standard mode does. The
-   same-session `claude` backend instead uses 3 fresh parallel `Explore`
-   lenses, Claude-maintained continuity, and Claude's own canonicalization;
-   `claude:<account-alias>` is incompatible with elevated assurance. Follow
-   `references/backend-selection.md` for those rules.
+   mode still uses `--resume-last` exactly as standard mode does. All
+   canonicalization-call, canonical-thread, `--resume-last`, and Codex-call-
+   budget mechanics in this paragraph apply only to the default `codex` path.
+   The same-session `claude` backend instead uses 3 fresh parallel `Explore`
+   lenses, Claude-maintained continuity, and Claude's own canonicalization,
+   with no separate canonicalization call, canonical thread, `--resume-last`,
+   or Codex-call budget consumed; `claude:<account-alias>` is incompatible
+   with elevated assurance. Follow `references/backend-selection.md` for
+   those rules.
    This is not a separate node — it is entirely a node 4 variant. Follow
    `references/elevated-assurance.md` in full before running it; it defines
    the lens prompts, the mandatory fan-in barrier (required specifically
@@ -742,29 +749,39 @@ match — **and** no net code change addressed it in between. When that
 happens, **stop and escalate to the user** instead of continuing to iterate.
 Never fabricate a false resolution just to exit the loop.
 
-Because CRITIQUE is now stateful via `--resume-last` (see node 4), Codex
-itself should rarely repeat a finding it already discussed — but "rarely"
-is not "never," so this judgment call must still be made by Claude on every
+On the default `codex` path, CRITIQUE is stateful via `--resume-last` (see
+node 4), so Codex itself should rarely repeat a finding it already discussed
+— but "rarely" is not "never." `backend: claude` instead uses fresh `Explore`
+reviewers with Claude-maintained continuity and no `--resume-last`. Under
+either backend, this judgment call must still be made by Claude on every
 loop-back to node 4, not assumed away.
 
 **Elevated-assurance pass accounting.** A CRITIQUE pass is one completed
 traversal of node 4 that produces one normalized finding set for node 5. On
-the initial elevated traversal, the 3 fresh lens calls, Claude's fan-in, and
+the default `codex` path, the initial 3 fresh lens calls, Claude's fan-in, and
 the fresh canonicalization call together count as **one** CRITIQUE pass, not
-four. Each later resumed canonical review counts as one pass. Each fresh exit
-challenger pass counts as one additional CRITIQUE pass — there may be more
-than one if an exit challenger's own findings go through REFACTOR and
-require a re-run (see `references/elevated-assurance.md`). DEBATE reinjections
-stay inside node 5 and do not create CRITIQUE passes. Apply the two-pass
-anti-loop comparison only to the normalized finding sets emitted by
-consecutive passes; duplicate lens reports inside one pass can neither
-trigger nor satisfy the cutoff. Separately from pass accounting, every Codex
-task invocation — each lens, canonicalization, resumed review, exit
-challenger, and DEBATE reinjection — consumes one unit of the persisted
-elevated-assurance model-call budget (see `references/elevated-assurance.md`
-for the derived floor and the adjustable default ceiling). Budget exhaustion
-is an escalation condition; it is never permission to skip a required lens,
-canonicalization, or exit challenge.
+four. Each later resumed canonical review counts as one pass, and each fresh
+exit challenger pass counts as one additional CRITIQUE pass — there may be
+more than one if an exit challenger's own findings go through REFACTOR and
+require a re-run (see `references/elevated-assurance.md`). Separately from
+pass accounting on that path, every Codex task invocation — each lens,
+canonicalization, resumed review, exit challenger, and DEBATE reinjection —
+consumes one unit of the persisted elevated-assurance model-call budget (see
+`references/elevated-assurance.md` for the derived floor and the adjustable
+default ceiling). Budget exhaustion is an escalation condition; it is never
+permission to skip a required lens, canonicalization, or exit challenge.
+
+For `backend: claude`, the 3 parallel fresh `Explore` lenses, Claude's fan-in,
+and Claude's own canonicalization together count as the initial CRITIQUE pass.
+Each later fresh `Explore` review and each fresh exit challenger counts as one
+additional pass. That backend has no separate canonicalization call,
+canonical thread, `--resume-last`, or persisted Codex model-call budget, and
+consumes no Codex budget; follow `references/backend-selection.md` for its
+continuity and self-canonicalization protocol. Under either compatible
+backend, DEBATE reinjections stay inside node 5 and do not create CRITIQUE
+passes. Apply the two-pass anti-loop comparison only to the normalized finding
+sets emitted by consecutive passes; duplicate lens reports inside one pass can
+neither trigger nor satisfy the cutoff.
 
 **Reconciling with the iteration cap in `references/goal-templates.md`:**
 this 2-round cutoff is this skill's own hard floor — it applies regardless

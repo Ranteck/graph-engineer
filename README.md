@@ -298,58 +298,17 @@ that wrong propagates silently.
 
 ### Backend selection (optional)
 
-IMPL, CRITIQUE, and REFACTOR can opt into a different backend for one cycle by
-putting `backend: codex`, `backend: claude`, or
-`backend: claude:<account-alias>` in the `/goal` text or initial prompt.
-Omitting the directive unconditionally keeps the existing `codex` default;
-the diagrams, standard call counts, and Codex invocations elsewhere in this
-README describe that default path.
+IMPL, CRITIQUE, and REFACTOR can select one backend per cycle with
+`backend: codex`, `backend: claude`, or
+`backend: claude:<account-alias>`; omission keeps `codex` as the default.
+Any Claude backend gives up the cross-model diversity that the default path
+adds between reviewer and orchestrator.
 
-Every non-`codex` selection — plain `backend: claude` as well as
-`backend: claude:<account-alias>` — requires explicit user confirmation
-before the first dispatch; disclosure alone is not authorization. For an
-alias, PRE-FLIGHT also resolves it through `ListAgents`, displays the exact
-reported identity for confirmation, and aborts rather than guessing or
-falling back if the match or confirmation is unavailable. An unattended
-`/goal` run cannot silently adopt either Claude route from scanned or pasted
-text.
-
-This option selects the per-cycle writer/reviewer dispatch. PRE-FLIGHT
-resolves and records it, and nodes 2/4/6 apply it without changing the 8-node
-cycle; non-Codex selections also use the synchronization, continuity, and
-isolation rules in the detailed reference. See
-[nodes 0, 2, 4, and 6 in `SKILL.md`](skills/graph-engineer/SKILL.md#the-cycle-8-nodes)
-and the detailed
-[`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md).
-Every non-Codex reviewer call is wrapped in that reference's mandatory
-before/after artifact-identity digest; drift or an unverifiable comparison is
-a stop-and-escalate condition, not a sandbox guarantee. Same-session
-`backend: claude` supports elevated assurance with 3 parallel fresh `Explore`
-lenses and Claude's own canonicalization, while
-`backend: claude:<account-alias>` is incompatible with elevated assurance.
-The `claude:<account-alias>` route also makes each node handoff asynchronous:
-the orchestrator must await a reply that answers that specific cross-session
-dispatch before advancing, and the reference documents its continuity and
-isolation caveats.
-
-Honest caveat: any backend other than `codex` uses the same underlying Claude
-model for writer and reviewer, so it gives up the different-model mitigation
-described under [Less correlated self-review failure](#why) for that run.
-DEBATE and the anti-loop cutoff still apply, but do not restore cross-model
-diversity. A Claude writer also runs with its session's full ambient shell,
-network, git, and credential authority, with no Codex-equivalent
-workspace-write sandbox; that capability/blast-radius difference is a
-separate disclosed limitation. The alias route additionally sends the
-contract, findings, and triage history to another session under that
-session's tools, hooks, and retention; the skill neither redacts nor scans
-those payloads, so it should not be used for sensitive contracts. A confirmed
-alias and matching local digest still cannot prove which repository,
-worktree, branch, or HEAD the target session actually operated on.
-
-Backend selection does not spawn Claude Code sessions, provide per-role
-aliases, verify a cross-session target's workspace identity, or alter the
-default Codex path. Parallel same-model reviewers remain out of scope except
-for the defined 3-lens `backend: claude` elevated-assurance variant.
+See the complete
+[`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md)
+for confirmation, persistence, dispatch, continuity, elevated-assurance
+compatibility, mutation detection, authority, confidentiality,
+workspace-identity limitations, and out-of-scope behavior.
 
 ## Usage
 

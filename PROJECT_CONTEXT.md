@@ -43,7 +43,10 @@ the feature currently in progress.
   security-abuse-data-loss
 - **exit challenger**: required-before-verify-or-done-rerun-until-clean
 - **CRITIQUE pass cap**: 5 (template default)
-- **Codex review/debate call budget**: 13 (template default)
+- **Codex review/debate call budget**: 16 (raised from the 13 template
+  default by explicit user approval after an unrelated Codex usage-limit
+  interruption mid-cycle, and after CRITIQUE round 3 found the 13 default
+  insufficient to reach VERIFY with the exit challenger included)
 
 ### Backend
 
@@ -78,7 +81,9 @@ nothing changes for a cycle that doesn't mention a backend. This lets a user
 route IMPL/REFACTOR/CRITIQUE to Claude instead when they specifically want to
 preserve a scarce Codex quota, while making explicit, every time, that doing
 so gives up the cross-model diversity that is Codex's documented reason for
-existing in this cycle (README.md:396-404, SKILL.md:23-27).
+existing in this cycle (the "Less correlated self-review failure" passage under README.md's `## Why`
+section (`README.md#why`) — cite the anchor, not a line range, since exact
+line numbers drift as README is edited, SKILL.md:23-27).
 
 **Invocation syntax.** A `backend:` directive in the user's `/goal` text or
 initial prompt, read by Claude at PRE-FLIGHT like the existing `read-only`,
@@ -132,7 +137,9 @@ the user, once, in plain terms, before SPEC, and persist under `### Backend`
 in this file — not just spoken once and discarded:
 1. Same-model diversity loss: this cycle uses the same underlying model for
    both writer and reviewer roles, so the "different model in the decision
-   path" mitigation this skill is built around (README.md:396-404) does not
+   path" mitigation this skill is built around (the "Less correlated self-review failure" passage under README.md's `## Why`
+section (`README.md#why`) — cite the anchor, not a line range, since exact
+line numbers drift as README is edited) does not
    apply this run; DEBATE arbitration and the anti-loop cutoff still apply,
    but they no longer compensate for a same-model blind spot the way they do
    against Codex.
@@ -168,12 +175,16 @@ Future CRITIQUE/DEBATE steps must not narrate a non-Codex review as
     (and `Agent`/`Artifact`/`ExitPlanMode`) — that is a **tool-list
     restriction, not a sandbox guarantee**: `Explore` retains Bash/shell
     access and is not structurally prevented from mutating files. Mitigate
-    with mandatory mutation detection: capture the artifact-identity digest
-    (SHA-256 over `git rev-parse HEAD` + `git status --porcelain=v1 -uall` +
-    `git diff HEAD --binary`, per `elevated-assurance.md`) immediately before
-    every `Explore` reviewer call and recompute/compare it after; any
-    mismatch is a stop-and-escalate condition, standard or elevated mode
-    alike.
+    with mandatory mutation detection: capture the full artifact-identity
+    digest exactly as `elevated-assurance.md` defines it — SHA-256 over
+    `git rev-parse HEAD` + `git status --porcelain=v1 -uall` +
+    `git diff HEAD --binary` + the NUL-delimited content-hash manifest of
+    initially-untracked paths (that manifest is required, not optional: a
+    mutation to an already-untracked file changes neither the porcelain
+    status line nor `git diff HEAD`, so omitting it would miss exactly that
+    mutation class) — immediately before every `Explore` reviewer call and
+    recompute/compare it after; any mismatch is a stop-and-escalate
+    condition, standard or elevated mode alike.
   - Continuity across CRITIQUE calls: plain `Agent()` subagents do not carry
     memory between calls the way `--resume-last` does for Codex. Every
     CRITIQUE call in `backend: claude` mode must therefore include an
