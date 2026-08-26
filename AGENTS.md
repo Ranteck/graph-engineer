@@ -51,10 +51,11 @@ anywhere in the cycle** — the writer selected at PRE-FLIGHT does: Codex by
 default via `codex:codex-rescue --write`, unless the user opts into a Claude
 backend for that cycle. `PROJECT_CONTEXT.md` in the *consuming* repo is the
 orchestrating Claude's only writable file-content artifact across the cycle:
-PRE-FLIGHT writes the `### Quality gate` resolution metadata there, SPEC writes
-the feature contract there, and (in write-authorized modes) PRE-FLIGHT/SPEC also
-finalize the `### Critique assurance` resolution there before IMPL — see
-`references/elevated-assurance.md`. All three are namespaced per feature under
+PRE-FLIGHT writes the `### Quality gate` and `### Backend` resolution metadata
+there, SPEC writes the feature contract there, and (in write-authorized modes)
+PRE-FLIGHT/SPEC also finalize the `### Critique assurance` resolution there
+before IMPL — see `references/elevated-assurance.md` and
+`references/backend-selection.md`. All four are namespaced per feature under
 the applicable `## <feature-name>` heading, and `### Critique assurance` is a
 finalized resolution, not a runtime progress log — don't have any node write
 intermediate elevated-assurance state (which lens finished, whether
@@ -93,15 +94,17 @@ Related invariants worth preserving when editing `SKILL.md`:
   cross-lens corroboration is recorded as metadata only, never as a fourth verdict,
   and never as a substitute for evidence.
 - The anti-loop cutoff (two consecutive CRITIQUE rounds restating the same underlying
-  finding with no net code change) is a signal Codex escalates to the user — it does
+  finding with no net code change) is a signal Claude escalates to the user — it does
   not by itself end a `/goal`-bound turn unless the user's `/goal` text includes an
   explicit stop/escalate clause. Don't describe it as an unconditional guarantee.
 - The cycle is exactly 8 nodes; elevated assurance is a variant of node 4, never a
   9th node. Don't let its diagrams or wording imply a new node.
-- The elevated write-authorized `/goal` prompt in `README.md` and the matching one in
-  `goal-templates.md` are wrapped in `<!-- elevated-write-goal:start/end -->` markers
-  specifically so their contents can be diffed for parity — keep them byte-identical
-  between the markers when editing either.
+- The elevated write-authorized `/goal` prompt lives in exactly one place now:
+  `goal-templates.md`, still wrapped in `<!-- elevated-write-goal:start/end -->`
+  markers. `README.md` does not duplicate it — it links to
+  `elevated-assurance.md` and `goal-templates.md` instead of embedding the
+  template. Don't re-add a copy of the prompt to `README.md`; if the template
+  needs to change, edit it once in `goal-templates.md`.
 
 ## Terminology to get right
 

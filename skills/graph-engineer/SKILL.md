@@ -92,8 +92,9 @@ of what this skill automates.)
 
 ## Selecting a mode
 
-Three entry paths exist. Pick one before starting — the cheapest costs a
-single Codex call and is a complete answer for most review work.
+Three entry paths exist. Pick one before starting — on the default `codex`
+path, the cheapest costs a single Codex call and is a complete answer for most
+review work.
 
 Both columns below are derived, not measured. **Floor** is a run where
 CRITIQUE finds nothing. **One-fix round** is a run where one finding is
@@ -110,8 +111,9 @@ Review-only is 1 in both columns because it never refactors — it reports and
 stops. Refactor-only and the full cycle reach their one-fix number by adding
 REFACTOR plus the re-review CRITIQUE that follows it.
 
-These counts are traced by node actor: IMPL, CRITIQUE, and REFACTOR are Codex
-calls, while PRE-FLIGHT, SPEC, QUALITY GATE, DEBATE, and VERIFY are Claude.
+On the default `codex` path, these counts are traced by node actor: IMPL,
+CRITIQUE, and REFACTOR are Codex calls, while PRE-FLIGHT, SPEC, QUALITY GATE,
+DEBATE, and VERIFY are Claude.
 QUALITY GATE only reaches Codex when a mechanical check fails, and DEBATE only
 when a `debatable` finding is reinjected. Elevated assurance expands node 4 and
 adds exit-challenger passes — it does not multiply IMPL or REFACTOR — and its
@@ -263,8 +265,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    "clean" means free of unrelated or pre-existing uncommitted work at cycle
    entry; it does not prohibit this cycle's deliberate context writes after the
    check. If either entry check fails, **abort with a clear message to the
-   user** instead of proceeding — do not let Codex's `--write` calls land on
-   top of existing uncommitted work or directly on `main`. This is what makes
+   user** instead of proceeding — do not let the selected writer's edits,
+   including Codex's `--write` calls on the default path, land on top of
+   existing uncommitted work or directly on `main`. This is what makes
    the "always enter on a branch with a clean working tree" rule under Risks an
    enforced check instead of a hope.
 
@@ -375,9 +378,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    **Namespace by feature.** `PROJECT_CONTEXT.md` is shared across every
    cycle run in a repo, so each feature's contract must live under its own
    heading, e.g. `## <feature-name>`. A given cycle run is scoped only to
-   its own section — Claude and Codex should read and write only the
-   section matching the current feature, never edit or reason over another
-   feature's section. This avoids one cycle's contract silently
+   its own section — Claude and the selected backend actors should read and
+   write only the section matching the current feature, never edit or reason
+   over another feature's section. This avoids one cycle's contract silently
    contaminating or being contaminated by an unrelated feature's contract
    in the same file.
 
@@ -571,12 +574,16 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    or Codex-call budget consumed; `claude:<account-alias>` is incompatible
    with elevated assurance. Follow `references/backend-selection.md` for
    those rules.
-   This is not a separate node — it is entirely a node 4 variant. Follow
-   `references/elevated-assurance.md` in full before running it; it defines
-   the lens prompts, the mandatory fan-in barrier (required specifically
-   because the pinned plugin resolves `--resume-last` by newest `updatedAt`
-   with no resume-by-thread-ID), the late-lens recovery rule, the normalized
-   finding record, and the budgets. In write-authorized modes, do not activate
+   This is not a separate node — it is entirely a node 4 variant. On the
+   default `codex` path, follow `references/elevated-assurance.md` in full
+   before running it; it defines the Codex lens prompts, the mandatory fan-in
+   barrier (required specifically because the pinned plugin resolves
+   `--resume-last` by newest `updatedAt` with no resume-by-thread-ID), the
+   late-lens recovery rule, the normalized finding record, and the budgets.
+   For `backend: claude`, follow `references/backend-selection.md`'s replacement
+   mechanics instead: 3 parallel fresh `Explore` lenses, Claude's own
+   canonicalization, and no canonical thread, `--resume-last`, or Codex budget.
+   In write-authorized modes, do not activate
    elevated mode without a persisted `### Critique assurance` resolution of
    `mode: elevated`. In review-only, require the user's explicit request to be
    recorded in the prompt, the Claude turn, and the final report.
@@ -603,9 +610,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
      `references/backend-selection.md`. Await the reply before deciding.
    - **False positive** → discarded, with one line of written justification
      (never silent acceptance or silent rejection).
-   Without this step Codex self-reviews with no filter, and the cycle can
-   oscillate or apply unnecessary changes — this is what distinguishes it
-   from "Codex fixing itself" with no oversight.
+   Without this step, the selected reviewer effectively self-reviews its
+   backend's work with no filter, and the cycle can oscillate or apply
+   unnecessary changes — DEBATE is what prevents an unarbitrated self-fix loop.
 
    **Elevated assurance fan-in.** When node 4 ran in elevated mode, first
    normalize the 3 lenses' reports into one finding record per underlying
@@ -640,18 +647,20 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    it. Remain read-only: this expands evidence collection, never Claude's
    authority to edit implementation files.
 
-   **Known limitation — same-model self-preference bias.** CRITIQUE and IMPL
-   both run on Codex, the same underlying model. That means CRITIQUE is not
-   a fully independent adversarial reviewer — it inherits whatever blind
-   spots or self-preference bias the model has about its own prior output.
-   There is no structural fix for this within a single-plugin design; the
-   targeted Read/Grep verification above is a mitigation, not a cure. Do not
-   present CRITIQUE's findings as independent verification — they are a
-   second pass by the same model, arbitrated by Claude. Elevated assurance's
-   3 lenses (`references/elevated-assurance.md`) reduce single-thread
-   anchoring and add angle diversity, but they are still the same underlying
-   Codex model — do not present N-lens agreement as independent verification
-   either.
+   **Known limitation — same-model self-preference bias.** On the default
+   `codex` path, CRITIQUE and IMPL both run on Codex, the same underlying
+   model. That means CRITIQUE is not a fully independent adversarial reviewer
+   — it inherits whatever blind spots or self-preference bias the model has
+   about its own prior output. There is no structural fix for this within a
+   single-plugin design; the targeted Read/Grep verification above is a
+   mitigation, not a cure. Do not present CRITIQUE's findings as independent
+   verification — they are a second pass by the same model, arbitrated by
+   Claude. Elevated assurance's 3 lenses (`references/elevated-assurance.md`)
+   reduce single-thread anchoring and add angle diversity, but on that path
+   they are still the same underlying Codex model — do not present N-lens
+   agreement as independent verification either. `backend: claude` has the
+   different, already-disclosed same-Claude-model limitation documented in
+   `references/backend-selection.md`.
 
 6. **REFACTOR** (selected backend fixes; Codex by default) —
    ```
@@ -727,9 +736,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    If VERIFY executes its assertions and fails, always return to node 4, then
    instruct CRITIQUE to classify the root cause as exactly one of:
    **implementation-defect / test-defect / contract-mismatch /
-   environmental**. Do not tell Codex to "just make the test pass." Continue
-   through DEBATE and REFACTOR only after that judgment. Never route a VERIFY
-   failure through the fast QUALITY GATE fixer.
+   environmental**. Do not tell the selected backend to "just make the test
+   pass." Continue through DEBATE and REFACTOR only after that judgment. Never
+   route a VERIFY failure through the fast QUALITY GATE fixer.
 
    If VERIFY cannot execute its assertions at all because of an environmental
    block, escalate directly to the user—take neither the QUALITY GATE fixer
@@ -814,8 +823,10 @@ variant).
 
 ## Risks
 
-- **`--write` is destructive**: Codex edits files directly. Always run on a
-  branch with a clean working tree, never on `main` with uncommitted changes.
+- **Writer edits are destructive**: the selected writer edits files directly;
+  on the default `codex` path, that authority is requested with `--write`.
+  Always run on a branch with a clean working tree, never on `main` with
+  uncommitted changes.
 - Codex's own cost is billed through the user's OpenAI account, not Claude
   tokens — this skill saves Claude's context/tokens, not total cost.
 - A read-only Codex session may reject a resumed write request; recover with a
@@ -829,10 +840,10 @@ variant).
   a restore point to revert to if a later round goes wrong, not as evidence
   the feature is done; a real run that tagged an intermediate round
   `COMPLETE` needed five more REFACTOR rounds after it.
-- Elevated assurance (`references/elevated-assurance.md`) is opt-in, and on
-  the default `codex` path its call floors sit far above standard mode's (see
-  Selecting a mode). A clean **elevated** run of the full 8-node write cycle
-  costs at least 5 Codex
+- On the default `codex` path, elevated assurance
+  (`references/elevated-assurance.md`) is opt-in and its call floors sit far
+  above standard mode's (see Selecting a mode). A clean **elevated** run of
+  the full 8-node write cycle costs at least 5 Codex
   review calls — 3 lenses, canonicalization, and the exit challenger — or 6
   Codex calls total counting IMPL; clean elevated refactor-only costs 5 total,
   and clean elevated review-only costs 4 total (3 lenses + canonicalization)
@@ -840,7 +851,10 @@ variant).
   bullet describes elevated mode alone; the standard floors are 1 to 2. It
   also consumes extra Claude context during fan-in — it
   undercuts the token-savings motivation above if treated as a default rather
-  than a risk-triggered exception. Its N lenses share the same underlying
-  Codex model and are not independent verification. Getting its fan-in
-  barrier ordering wrong can misdirect `--resume-last` to the wrong thread;
-  it must never activate without explicit user authorization.
+  than a risk-triggered exception. On that path, its N lenses share the same
+  underlying Codex model and are not independent verification, and getting
+  its fan-in barrier ordering wrong can misdirect `--resume-last` to the wrong
+  thread. `backend: claude` has neither that Codex-call floor nor that
+  `--resume-last` fan-in risk; follow `references/backend-selection.md` for its
+  different limitations. Elevated assurance must never activate without
+  explicit user authorization on either compatible backend.

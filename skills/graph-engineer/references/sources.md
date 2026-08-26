@@ -21,9 +21,9 @@ design.
     delegates them to worker LLMs, and synthesizes their results."
   - Evaluator-optimizer: "one LLM call generates a response while another
     provides evaluation and feedback in a loop."
-  This skill nests an Evaluator-Optimizer loop (Codex implements, Codex
-  critiques, Claude arbitrates) inside an Orchestrator-Workers structure
-  (the user/Claude session orchestrates, Codex is the worker).
+  By default, this skill nests an Evaluator-Optimizer loop (Codex implements,
+  Codex critiques, Claude arbitrates) inside an Orchestrator-Workers structure
+  (the user/Claude session orchestrates, Codex is the default worker).
 - The **Codex plugin for Claude Code** is official and owned by OpenAI:
   [github.com/openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc),
   marketplace name `openai-codex`, plugin `codex`, author `OpenAI`. This
@@ -91,9 +91,9 @@ effective — that would overstate what a social-media post, however fully
 read, can establish. What's actually adopted here is narrower than and
 different from both posts' broader roadmaps: most of what they describe
 (parallel research fan-out, JS routers, per-node model staggering) does not
-apply to this skill's single-Codex-worker design and was explicitly rejected
-during the design discussion; only the "reviewer node with teeth, one agent
-writes" principle carried over, and even that was adopted with a
+apply to this skill's default single-Codex-worker design and was explicitly
+rejected during the design discussion; only the "reviewer node with teeth, one
+agent writes" principle carried over, and even that was adopted with a
 **rejection** of the majority-vote survival rule both posts describe — see
 `elevated-assurance.md`'s "What this explicitly does not do" section for why.
 

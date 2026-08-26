@@ -256,9 +256,9 @@ afterward (a clean starting point is what makes that comparison meaningful).
 
 ## Choosing a mode
 
-There are three entry paths. The cheapest costs a single Codex call and is a
-complete answer for most review work, so pick deliberately rather than
-defaulting to the full cycle.
+There are three entry paths. On the default `codex` backend, the cheapest costs
+a single Codex call and is a complete answer for most review work, so pick
+deliberately rather than defaulting to the full cycle.
 
 Both columns are derived, not measured. **Floor** is a run where CRITIQUE
 finds nothing. **One-fix round** is a run where one finding is accepted,
@@ -420,6 +420,10 @@ and the ready-to-paste `/goal` templates:
 
 ## Why
 
+The role and cost claims below describe the default `codex` path. Opting into a
+Claude backend replaces those actors and carries the trade-offs disclosed in
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
+
 1. **Intended token and context savings.** This split is designed to keep
    Claude's context focused on the contract, orchestration, and judgment
    while Codex carries the implementation-heavy work — not independently
@@ -453,6 +457,10 @@ added cost, which is why it's risk-triggered rather than default.
 
 ## How it works
 
+This table describes the default `codex` path; the Claude substitutions are
+defined in
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
+
 | Graph role | Piece | Invocation |
 |---|---|---|
 | Orchestrator | User + Claude Code session | — |
@@ -484,8 +492,10 @@ assurance's 3 lenses give angle diversity, not independent verification (see
 below). The rest of this section is where the concrete risks and unverified
 claims live.
 
-- **`--write` is destructive.** Codex edits files directly. Always run on a
-  branch with a clean working tree, never on `main` with uncommitted changes.
+- **Writer edits are destructive.** The selected writer edits files directly;
+  on the default `codex` path, Codex receives that authority through `--write`.
+  Always run on a branch with a clean working tree, never on `main` with
+  uncommitted changes.
 - **Codex's cost is separate from Claude's.** This skill is designed to
   reduce Claude's context/token usage (not independently benchmarked, see
   [Why](#why)); Codex calls are billed through your own OpenAI account.
@@ -507,9 +517,12 @@ claims live.
   content hashes — `git diff --check` alone doesn't prove nothing changed)
   and, only if they match, start a fresh, non-resumed Codex session with
   `--write` from the beginning instead of retrying the resume.
-- **Same-model review is not independent verification.** IMPL and CRITIQUE
-  both use Codex, so they can share blind spots and self-preference bias.
-  Claude's evidence-based DEBATE is a mitigation, not a proof of correctness.
+- **Same-model review is not independent verification.** On the default
+  `codex` path, IMPL and CRITIQUE both use Codex, so they can share blind spots
+  and self-preference bias. Claude's evidence-based DEBATE is a mitigation,
+  not a proof of correctness. Claude backends have their own same-model
+  limitation documented in
+  [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 - **Multi-model fan-out was considered and deliberately rejected.** Having
   Claude, Codex, and other models each review independently and reconcile by
   majority vote sounds like it would buy more coverage. It was evaluated and
@@ -541,24 +554,28 @@ claims live.
   QUALITY GATE only proves lint/type/build passed, not that CRITIQUE or
   VERIFY signed off — a real run once tagged an intermediate round
   `COMPLETE` and needed five more REFACTOR rounds after it.
-- **Elevated assurance is not independent verification.** Its 3 lenses share
-  the same underlying Codex model as standard CRITIQUE, so what they add is
-  angle diversity plus reduced single-thread anchoring — not a second
-  opinion from a different model. A clean **elevated** run of the full 8-node
-  write cycle costs 5 review calls (3 lenses + canonicalization + exit
-  challenger) — 6 total counting IMPL; clean elevated refactor-only costs 5
-  total, and clean elevated review-only costs 4 total. Those are elevated
-  figures only; the standard floors are in
+- **Elevated assurance is not independent verification.** On the default
+  `codex` path, its 3 lenses share the same underlying Codex model as standard
+  CRITIQUE, so what they add is angle diversity plus reduced single-thread
+  anchoring — not a second opinion from a different model. A clean
+  **elevated** run of the full 8-node write cycle costs 5 review calls (3
+  lenses + canonicalization + exit challenger) — 6 total counting IMPL; clean
+  elevated refactor-only costs 5 total, and clean elevated review-only costs 4
+  total. Those are elevated figures only; the standard floors are in
   [Choosing a mode](#choosing-a-mode). That extra cost (detailed under
   [Elevated assurance](#elevated-assurance-optional)) would undercut the
   token-savings motivation in [Why](#why) if it were ever treated as a
   default instead of a risk-triggered exception, which is why it isn't one.
-  Getting the fan-in barrier ordering wrong can misdirect
-  `--resume-last` to a stray lens thread instead of the intended canonical
-  one — see
+  On that path, getting the fan-in barrier ordering wrong can misdirect
+  `--resume-last` to a stray lens thread instead of the intended canonical one
+  — see
   [`elevated-assurance.md`](skills/graph-engineer/references/elevated-assurance.md)
-  for why that barrier exists and is not optional. It must never activate
-  without your explicit authorization.
+  for why that barrier exists and is not optional. `backend: claude` has
+  neither those Codex-call floors nor that `--resume-last` risk; its distinct
+  limitations are documented in
+  [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
+  Elevated assurance must never activate without your explicit authorization
+  on either compatible backend.
 - **Running the reviewer headless can look hung instead of failed.**
   User-reported, not verified by this project: if the target isn't a git
   repo, or the review process is run with stdin attached to a terminal, the

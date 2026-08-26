@@ -83,7 +83,7 @@ preserve a scarce Codex quota, while making explicit, every time, that doing
 so gives up the cross-model diversity that is Codex's documented reason for
 existing in this cycle (the "Less correlated self-review failure" passage under README.md's `## Why`
 section (`README.md#why`) — cite the anchor, not a line range, since exact
-line numbers drift as README is edited, SKILL.md:23-27).
+line numbers drift as README is edited, SKILL.md:26-32).
 
 **Invocation syntax.** A `backend:` directive in the user's `/goal` text or
 initial prompt, read by Claude at PRE-FLIGHT like the existing `read-only`,
@@ -110,27 +110,42 @@ not a structured argument after the skill name).
 
 **PRE-FLIGHT resolution (new sub-decision, node 0).** Once per cycle entry,
 alongside quality gate and checkpoint-commit policy: parse the `backend:`
-directive if present (default `codex` if absent). If `backend:` appears more
-than once with conflicting values across the initial prompt and `/goal`,
-stop and ask — never guess by source order. Persist the resolution under
-`### Backend` in this file before IMPL. **Every non-`codex` selection —
-`claude` as well as `claude:<alias>` — requires explicit user confirmation
-before the first dispatch**, because both hand a writer full ambient tool
-authority with no Codex-equivalent sandbox; disclosure alone is not
-authorization, and confirmation is not limited to the alias case. For
-`backend: claude:<alias>`, additionally resolve `<alias>` to a reachable
-session via `ListAgents` *at PRE-FLIGHT*, before SPEC, and display the exact
-identity `ListAgents` reports for the user to confirm — reachability alone
-is best-effort account addressing, not authorization, and not repository
-root/worktree/branch/HEAD verification; a session can confirm completion of
-a dispatch while having operated on a different checkout entirely, and
-nothing in this design can detect that. If no matching session is found, the
-match is ambiguous, or confirmation isn't given, abort with a clear message
-(same escalate-don't-guess posture as an unreachable Codex plugin) rather
-than silently falling back to `claude` or `codex`. **Elevated assurance is
-incompatible with `claude:<alias>`** (one retained conversation cannot supply
-3 independent fresh lenses) — reject that combination at PRE-FLIGHT and ask
-the user to choose `codex`, `claude`, or standard mode instead.
+directive if present (default `codex` if absent, and rejected with a clear
+message — not guessed — if it's present but empty or not one of the three
+accepted values). If `backend:` appears more than once with conflicting
+values across the initial prompt and `/goal`, stop and ask — never guess by
+source order. The resolved backend applies to the whole cycle and does not
+change between nodes. Persistence and disclosure timing differ by mode:
+
+- **Full 8-node write cycle**: persist the resolution under `### Backend` in
+  this file before IMPL; give and persist the mandatory disclosure(s) before
+  SPEC.
+- **Refactor-only** (no SPEC, no IMPL): persist under `### Backend` before
+  the initial CRITIQUE; give and persist disclosure(s) before that same
+  first CRITIQUE.
+- **Review-only** (never writes this file): record the resolution and any
+  disclosure in the user's prompt, the Claude turn, and the final report
+  instead — never write `PROJECT_CONTEXT.md`.
+
+**Every non-`codex` selection — `claude` as well as `claude:<alias>` —
+requires explicit user confirmation before the first dispatch**, because
+both hand a writer full ambient tool authority with no Codex-equivalent
+sandbox; disclosure alone is not authorization, and confirmation is not
+limited to the alias case. For `backend: claude:<alias>`, additionally
+resolve `<alias>` to a reachable session via `ListAgents` *at PRE-FLIGHT*,
+before SPEC (or before the first CRITIQUE in refactor-only), and display the
+exact identity `ListAgents` reports for the user to confirm — reachability
+alone is best-effort account addressing, not authorization, and not
+repository root/worktree/branch/HEAD verification; a session can confirm
+completion of a dispatch while having operated on a different checkout
+entirely, and nothing in this design can detect that. If no matching session
+is found, the match is ambiguous, or confirmation isn't given, abort with a
+clear message (same escalate-don't-guess posture as an unreachable Codex
+plugin) rather than silently falling back to `claude` or `codex`. **Elevated
+assurance is incompatible with `claude:<alias>`** (one retained conversation
+cannot supply 3 independent fresh lenses) — reject that combination at
+PRE-FLIGHT and ask the user to choose `codex`, `claude`, or standard mode
+instead.
 
 **Mandatory disclosure when `backend != codex`.** PRE-FLIGHT must state to
 the user, once, in plain terms, before SPEC, and persist under `### Backend`
