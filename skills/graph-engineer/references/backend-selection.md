@@ -102,7 +102,8 @@ critique-assurance, and checkpoint-commit policy:
    `claude:<account-alias>` because one retained cross-session reviewer
    conversation cannot supply its 3 independent fresh lenses. If both are
    requested, stop and ask the user to choose `codex`, `claude`,
-   `claude-writer:<account-alias>`, or to decline elevated mode. Elevated
+   `claude-writer:<account-alias>`, or to decline elevated mode; in review-only,
+   omit `claude-writer:<account-alias>` from that list. Elevated
    assurance is compatible with `claude-writer:<account-alias>` because its
    CRITIQUE actor is local and can use the same 3 fresh `Explore` lenses as
    `backend: claude`; the writer's location is irrelevant to lens freshness.
