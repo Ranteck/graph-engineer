@@ -41,11 +41,13 @@ nodes or reinterpret an omitted directive after PRE-FLIGHT.
 
 The name states the one role whose target differs while preserving the
 existing single-token `backend:` directive shape. Do not replace it with a
-generic `writer=<a> reviewer=<b>` grammar: that would imply unsupported free
-assignment of either role, including a cross-session reviewer alias. Do not
-use a `claude:<account-alias>+claude` suffix either; it does not say which role
-goes where and is ambiguous beside `claude:<account-alias>`'s existing
-both-roles meaning.
+generic `writer=<a> reviewer=<b>` grammar: even if a stricter grammar limited
+the accepted target kinds per role, that surface reads as an open,
+general-purpose role-assignment mechanism and breaks the single-token-
+directive precedent every other backend value follows. Do not use a
+`claude:<account-alias>+claude` suffix either; it does not say which role goes
+where and is ambiguous beside `claude:<account-alias>`'s existing both-roles
+meaning.
 
 ### Rejected alternative: `graph-engineer:claude-personal`
 
@@ -70,7 +72,10 @@ critique-assurance, and checkpoint-commit policy:
    one.
 3. Accept only `codex`, `claude`, `claude:<account-alias>`, or
    `claude-writer:<account-alias>`. Reject an empty alias or any other value
-   with a clear message instead of guessing.
+   with a clear message instead of guessing. In review-only, reject
+   `claude-writer:<account-alias>` at PRE-FLIGHT because that mode has no
+   writer role: ask the user to choose `codex`, `claude`, or
+   `claude:<account-alias>` instead. Do not silently degrade it to `claude`.
 4. For every non-`codex` value — plain `claude`,
    `claude:<account-alias>`, and `claude-writer:<account-alias>` — require
    explicit user confirmation before the first dispatch. Disclosure alone is
@@ -153,7 +158,11 @@ Also append this writer/reviewer-isolation disclosure, specific to
 > writer/reviewer isolation of all four backends; do not describe it as a
 > different or independent reviewer.
 
-For `claude-writer:<account-alias>`, append disclosure point 4 instead:
+For `claude-writer:<account-alias>`, append disclosure point 4 instead, but
+only in the full 8-node write cycle or refactor-only, where a writer role
+exists. Review-only must reject this backend at PRE-FLIGHT as described above,
+not emit a disclosure for a cross-session writer dispatch that will never
+happen:
 
 > The feature contract and, for REFACTOR, the triaged fix list and continuity
 > summary will be sent to a different account/session and are subject to that
@@ -381,11 +390,16 @@ writer dispatches only.
 #### IMPL and REFACTOR: cross-session writer
 
 Reuse the existing `claude:<account-alias>` subsection's IMPL/REFACTOR
-mechanics without modification: use `SendMessage` to the same resolved,
-confirmed session; name the feature, node, and expected response; await a
-reply that clearly answers that dispatch; and apply the same best-effort
-causal, reachability, and workspace-identity limitations stated there. Do not
-send CRITIQUE or node 5 reviewer reinjections to that session in this mode.
+dispatch mechanics: use `SendMessage` to the same resolved, confirmed session;
+name the feature, node, and expected response; await a reply that clearly
+answers that dispatch; and apply the same best-effort causal, reachability,
+and workspace-identity limitations stated there. Unlike
+`claude:<account-alias>`, this writer never saw CRITIQUE or node 5
+reinjections. Every REFACTOR dispatch must therefore include, alongside the
+triaged fix list, the same manually maintained continuity summary kept for the
+local reviewer: prior findings, triage verdicts, and still-applicable
+constraints. Do not send CRITIQUE or node 5 reviewer reinjections to that
+session in this mode.
 
 #### CRITIQUE: fresh local `Explore` reviewer
 

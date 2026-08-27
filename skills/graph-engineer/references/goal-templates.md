@@ -295,16 +295,16 @@ or no usable safety precondition.
 No `--write`, same as the standard-mode review-only template, but with the
 3-lens sweep, fan-in, and the selected backend's canonicalization step instead
 of a single reviewer. On the default `codex` path that step is one separate
-canonicalization call; `backend: claude` and
-`backend: claude-writer:<account-alias>` perform it locally with no separate
-call.
+canonicalization call; `backend: claude` performs it locally with no separate
+call. `backend: claude-writer:<account-alias>` is invalid in review-only
+because this mode has no writer role; PRE-FLIGHT rejects it rather than
+silently treating it as `backend: claude`.
 No REFACTOR, QUALITY GATE, VERIFY, or exit challenger — there is no final
 artifact distinct from what was just reviewed. On the default `codex` path,
 the recommended reviewer budget is 5 calls (the clean structural floor is 4:
 3 lenses + canonicalization, plus at most 1 batched debatable reinjection).
-`backend: claude` and `backend: claude-writer:<account-alias>` consume no
-Codex budget. An incomplete lens sweep escalates; never silently degrade to
-reporting only one lens's output.
+`backend: claude` consumes no Codex budget. An incomplete lens sweep escalates;
+never silently degrade to reporting only one lens's output.
 
 ```
 /goal Use graph-engineer's elevated-assurance review-only mode
@@ -312,11 +312,14 @@ reporting only one lens's output.
 Backend qualification: separate canonicalization calls, canonical-thread
 ownership, --resume-last, Codex reviewer reachability, and Codex call floors/
 budgets in this template apply only to backend: codex. For a confirmed
-backend: claude or backend: claude-writer:<account-alias> selection, follow
-references/backend-selection.md instead: 3 parallel fresh Explore lenses with
-Claude's own canonicalization and no separate canonicalization call, canonical
-thread, --resume-last, or Codex budget consumed. backend:
-claude:<account-alias> is incompatible with elevated assurance.
+backend: claude selection, follow references/backend-selection.md instead: 3
+parallel fresh Explore lenses with Claude's own canonicalization and no
+separate canonicalization call, canonical thread, --resume-last, or Codex
+budget consumed. backend: claude-writer:<account-alias> is invalid in
+review-only; PRE-FLIGHT must reject it and ask the user to choose codex,
+claude, or claude:<account-alias> instead, without silently degrading it.
+backend: claude:<account-alias> is incompatible with elevated assurance, so
+that alternative requires standard review-only mode.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-
 data-loss) reviewed it read-only, Claude normalized their findings with
@@ -329,18 +332,16 @@ soon as the report and triage are complete, without moving to REFACTOR.
 On backend: codex only, the clean structural floor is 4 Codex review/total
 calls (3 lenses + canonicalization), and the recommended reviewer budget is 5
 Codex calls total for this activation, allowing at most 1 batched debatable
-reinjection. backend: claude and backend: claude-writer:<account-alias>
-consume no Codex budget. If a lens finishes after canonicalization began,
-apply the documented late-lens
-recovery: wait for every lens to reach a terminal state, merge the late
+reinjection. backend: claude consumes no Codex budget. If a lens finishes
+after canonicalization began, apply the documented late-lens recovery: wait
+for every lens to reach a terminal state, merge the late
 result into the finding ledger, and repeat canonicalization with the complete
 ledger — start a replacement fresh canonicalization call on backend: codex,
-or redo Claude's own canonicalization on backend: claude or backend:
-claude-writer:<account-alias> — rather than treating this alone as a stop
-condition. For the initial parallel 3-lens dispatch,
-capture one artifact-identity digest immediately before dispatching all 3 and
-recompute and compare it once after all 3 terminate, before fan-in, not per
-lens. For each ordinary single-reviewer CRITIQUE call, reinjection, or backend:
+or redo Claude's own canonicalization on backend: claude — rather than
+treating this alone as a stop condition. For the initial parallel 3-lens
+dispatch, capture one artifact-identity digest immediately before dispatching
+all 3 and recompute and compare it once after all 3 terminate, before fan-in,
+not per lens. For each ordinary single-reviewer CRITIQUE call, reinjection, or backend:
 codex canonicalization, capture the digest immediately before dispatch and
 recompute and compare it immediately after completion. If any
 of the 3 lenses fails to return, that recovery itself cannot establish

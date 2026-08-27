@@ -145,12 +145,16 @@ same precedent instead of inventing a new mechanism.
   get a non-self reviewer.
 
 **Naming decision for the new value.** Considered and rejected a generic
-`writer=<a> reviewer=<b>` keyword-pair grammar: it would incorrectly imply
-free assignment of either role to either kind of target (including
-`reviewer=<account-alias>`, which this feature does not support and which
-would just reintroduce a cross-session self-review risk), and it breaks the
-single-token-directive precedent every other `backend:` value follows.
-Considered and rejected a `claude:<account-alias>+claude` suffix form: the
+`writer=<a> reviewer=<b>` keyword-pair grammar. A stricter version of that
+grammar could technically be restricted to only the accepted target kinds
+per role, so the rejection isn't that free role assignment is a logical
+necessity of keyword syntax — it's a surface/UX argument: the shape itself
+reads as an open, general-purpose role-assignment mechanism (implying
+support for combinations like `reviewer=<account-alias>`, which this feature
+does not and will not support, since it would just reintroduce a
+cross-session self-review risk), and it breaks the single-token-directive
+precedent every other `backend:` value follows, which a user has to learn
+only once. Considered and rejected a `claude:<account-alias>+claude` suffix form: the
 `+claude` suffix doesn't self-evidently say *which* role goes where, and
 reads ambiguously next to `claude:<account-alias>`'s existing both-roles
 meaning. `claude-writer:<account-alias>` was chosen because the name states
@@ -243,12 +247,20 @@ line numbers drift as README is edited) does not
    that session's own tools, hooks, and retention — avoid this backend for
    contracts containing secrets or sensitive data; this skill does not
    redact or scan payloads before sending them.
-4. For `claude-writer:<alias>` specifically (new this round): the feature
-   contract and, for REFACTOR, the triaged fix list and continuity summary
-   are sent to a different account/session subject to that session's own
-   tools, hooks, and retention — the same confidentiality caveat as point 3,
-   scoped to the writer dispatch only, since CRITIQUE stays local in this
-   mode. State the isolation trade-off accurately and specifically, not by
+4. For `claude-writer:<alias>` specifically (new this round; applies only to
+   the full 8-node write cycle and refactor-only, which have a writer role —
+   see the review-only note below): the feature contract and, for REFACTOR,
+   the triaged fix list and continuity summary are sent to a different
+   account/session subject to that session's own tools, hooks, and
+   retention — the same confidentiality caveat as point 3, scoped to the
+   writer dispatch only, since CRITIQUE stays local in this mode.
+   **`claude-writer:<alias>` has no writer role to dispatch to in
+   review-only** (review-only never runs IMPL/REFACTOR), making it
+   functionally indistinguishable from `backend: claude` there. Reject the
+   combination at PRE-FLIGHT with a clear message asking the user to choose
+   `codex`, `claude`, or `claude:<alias>` instead, rather than silently
+   degrading it or emitting a disclosure describing a dispatch that will
+   never happen. State the isolation trade-off accurately and specifically, not by
    reusing `claude:<alias>`'s wording verbatim: this mode is a **real
    improvement** over `claude:<alias>` — the reviewer does not literally
    remember authoring the code, because a fresh local `Explore` subagent
@@ -358,12 +370,19 @@ Future CRITIQUE/DEBATE steps must not narrate a non-Codex review as
 
 - **`claude-writer:<account-alias>` (cross-session writer, local reviewer —
   new this round).**
-  - IMPL/REFACTOR (writer): identical mechanics to `claude:<account-alias>`
-    above — `SendMessage` to the resolved, confirmed session, await a reply
-    that clearly answers that specific dispatch, same best-effort causal
-    convention, same lack of request-correlation ID/timeout/retry, same
-    inability to verify the target's actual repository/worktree/branch/HEAD
-    beyond the confirmed session identity.
+  - IMPL/REFACTOR (writer): same `SendMessage` mechanics as
+    `claude:<account-alias>`'s writer dispatch — await a reply that clearly
+    answers that specific dispatch, same best-effort causal convention, same
+    lack of request-correlation ID/timeout/retry, same inability to verify
+    the target's actual repository/worktree/branch/HEAD beyond the confirmed
+    session identity — with one required difference: `claude:<account-alias>`
+    can rely on the target session's own retained conversation for
+    continuity, but the `claude-writer:<alias>` writer never saw CRITIQUE or
+    node 5 reinjections. Every REFACTOR dispatch to it must therefore
+    explicitly include the same manually-maintained continuity summary kept
+    for the local reviewer (prior findings, triage verdicts, still-applicable
+    constraints) alongside the triaged fix list — omitting it is a contract
+    violation of this mode, not a stylistic nicety.
   - CRITIQUE (reviewer): identical mechanics to `backend: claude`'s reviewer
     above — a fresh local `Agent(subagent_type: "Explore", ...)` per call,
     never the cross-session alias, with the same mandatory before/after
