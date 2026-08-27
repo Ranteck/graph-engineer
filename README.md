@@ -70,10 +70,13 @@ flowchart TD
     VERIFY -- pass --> DONE(["DONE"])
 ```
 
-Every node is Claude or Codex, never a third agent. Every edge is state
-written to `PROJECT_CONTEXT.md`, not implicit memory — that's what makes
-this a graph/state-machine rather than a single long conversation. Which
-tool call implements each node (subagent, flags) is in the
+On the default `codex` path, every node is Claude or Codex, never a third
+agent, and every edge is state written to `PROJECT_CONTEXT.md`, not implicit
+memory — that's what makes this a graph/state-machine rather than a single
+long conversation. `backend: claude` continuity additionally relies on the
+orchestrator's conversation memory; see
+[`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
+Which tool call implements each node (subagent, flags) is in the
 [How it works](#how-it-works) table below.
 
 QUALITY GATE is numbered so the invariant is visible, but it is not a new
@@ -302,7 +305,9 @@ IMPL, CRITIQUE, and REFACTOR can select one backend per cycle with
 `backend: codex`, `backend: claude`, or
 `backend: claude:<account-alias>`; omission keeps `codex` as the default.
 Any Claude backend gives up the cross-model diversity that the default path
-adds between reviewer and orchestrator.
+adds between reviewer and orchestrator; `claude:<account-alias>` also has the
+weakest writer/reviewer isolation because the same retained session remembers
+authoring the code it reviews.
 
 See the complete
 [`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md)

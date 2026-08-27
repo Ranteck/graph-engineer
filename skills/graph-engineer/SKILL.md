@@ -290,10 +290,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    `claude` can instead supply 3 fresh parallel `Explore` lenses. When the
    backend is not `codex`, give and persist every mandatory disclosure before
    SPEC, or before the first dispatched node when the selected mode has no
-   SPEC: same-model diversity loss and the Claude writer's unrestricted
-   ambient authority for both Claude routes, plus cross-session
-   confidentiality, tools/hooks/retention, and no-redaction caveats for an
-   alias. Review-only records the
+   SPEC: (1) same-model diversity loss and (2) the Claude writer's unrestricted
+   ambient authority for both Claude routes, plus, for an alias, (3)
+   cross-session confidentiality, tools/hooks/retention, and no-redaction
+   caveats and (4) the weakest writer/reviewer isolation, because its retained
+   session remembers authoring the code it reviews. Review-only records the
    resolution and any disclosure in the prompt, turn, and final report
    instead of writing `PROJECT_CONTEXT.md`. Read and follow
    `references/backend-selection.md`; it defines the persisted schema,

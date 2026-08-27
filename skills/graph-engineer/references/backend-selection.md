@@ -123,6 +123,14 @@ For `claude:<account-alias>`, append this cross-session disclosure:
 > or sensitive data: this skill does not redact or scan payloads before
 > sending them.
 
+Also append this explicit fourth disclosure, specific to
+`claude:<account-alias>`:
+
+> The same retained session performs both writer and reviewer work and
+> literally remembers authoring the code it reviews. This is the weakest
+> writer/reviewer isolation of all three backends; do not describe it as a
+> different or independent reviewer.
+
 Do not describe a later CRITIQUE in that cycle as “independent review.” A new
 subagent or a different account/process may change thread context, tools, or
 credentials, but it does not create cross-model diversity.
@@ -141,10 +149,12 @@ concatenation of `git rev-parse HEAD`, raw
 `git status --porcelain=v1 -uall`, `git diff HEAD --binary`, and that
 reference's NUL-delimited content-hash manifest for initially-untracked paths.
 
-Capture the digest immediately before dispatch, recompute it after the reply,
-and accept the review only if they match exactly. A mismatch, or inability to
-construct or compare either digest, is a stop-and-escalate condition. This is
-mutation detection, not a sandbox or prevention guarantee.
+For ordinary single-reviewer CRITIQUE calls — standard mode, reinjections, and
+the exit challenger — capture the digest immediately before dispatch,
+recompute it after the reply, and accept the review only if they match exactly.
+A mismatch, or inability to construct or compare either digest, is a
+stop-and-escalate condition. This is mutation detection, not a sandbox or
+prevention guarantee.
 
 ## Node dispatch by backend
 
@@ -214,6 +224,12 @@ Codex-style canonicalization call or canonical thread for this backend. The
 remaining lens, artifact-identity, budget, and exit-challenger invariants in
 `elevated-assurance.md` still apply, with fresh `Explore` calls wherever a
 reviewer is required.
+
+For that initial concurrent 3-lens sweep, capture one digest immediately
+before dispatching all 3 lenses and recompute and compare it once after all 3
+terminate, before Claude's fan-in. This is one comparison covering the set,
+not one comparison per lens; ordinary single-reviewer calls continue to use
+the per-call rule above.
 
 Because Claude performs both fan-in and canonicalization on this backend,
 there is no independent second pass auditing the accuracy of Claude's merge/
