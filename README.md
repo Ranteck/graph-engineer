@@ -305,6 +305,8 @@ that wrong propagates silently.
 IMPL, CRITIQUE, and REFACTOR can select one backend per cycle with
 `backend: codex`, `backend: claude`, `backend: claude:<account-alias>`, or
 `backend: claude-writer:<account-alias>`; omission keeps `codex` as the default.
+`claude-writer:<account-alias>` is available only for the full 8-node write
+cycle and refactor-only, not review-only.
 Any Claude backend gives up the cross-model diversity that the default path
 adds between reviewer and orchestrator; `claude:<account-alias>` also has the
 weakest writer/reviewer isolation because the same retained session remembers
@@ -330,8 +332,10 @@ different, incompatible permissions. Review-only also isn't the 8-node cycle
 running read-only — it's a separate terminal path
 (`PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE`) that skips SPEC, IMPL,
 QUALITY GATE, REFACTOR, and VERIFY. It reviews the scope you name directly
-and doesn't require a `PROJECT_CONTEXT.md` contract to exist. On non-Codex
-backends, “authorizes no edits” is not an absolute sandbox guarantee; follow
+and doesn't require a `PROJECT_CONTEXT.md` contract to exist. Review-only
+rejects `claude-writer:<account-alias>` at PRE-FLIGHT because that mode has no
+writer role. For the accepted non-Codex backends, “authorizes no edits” is not
+an absolute sandbox guarantee; follow
 the mutation-detection and prompt-only/tool-list caveats in
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 
@@ -386,8 +390,9 @@ With a confirmed `backend: claude` or
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md):
 3 parallel fresh `Explore` lenses and Claude's own canonicalization, with no
 separate canonicalization call, canonical thread, `--resume-last`, or Codex
-budget consumed. The `claude:<account-alias>` backend cannot run elevated
-assurance.
+budget consumed. `claude-writer:<account-alias>` applies here only to the full
+8-node write cycle and refactor-only, not review-only. The
+`claude:<account-alias>` backend cannot run elevated assurance.
 
 ```mermaid
 flowchart TD

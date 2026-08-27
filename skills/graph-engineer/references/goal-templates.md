@@ -195,6 +195,9 @@ Codex, and a CRITIQUE invocation capable of producing the report. A dirty
 working tree, `main` branch, or read-only filesystem is allowed. Do not write
 PROJECT_CONTEXT.md or resolve/run QUALITY GATE. Stop and report only if an
 environmental failure actually prevents CRITIQUE from producing the report.
+backend: claude-writer:<account-alias> is invalid in review-only because this
+mode has no writer role; PRE-FLIGHT must reject it and ask the user to choose
+codex, claude, or claude:<account-alias> instead, without silently degrading it.
 ```
 
 ## Elevated assurance — explicit opt-in, write-authorized

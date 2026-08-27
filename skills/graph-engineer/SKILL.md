@@ -276,8 +276,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    **Backend resolution.** Resolve the `backend:` directive once per cycle
    entry for every mode. The accepted values are `codex`, `claude`,
    `claude:<account-alias>`, and `claude-writer:<account-alias>`; omission
-   always resolves to `codex`, without a prompt or inference. In
-   write-authorized modes, persist the resolution under `### Backend` in the
+   always resolves to `codex`, without a prompt or inference. In review-only,
+   reject `claude-writer:<account-alias>` at PRE-FLIGHT because that mode has
+   no writer role; follow `references/backend-selection.md` for the rejection
+   mechanism. For write-authorized modes, persist the resolution under
+   `### Backend` in the
    current feature's `PROJECT_CONTEXT.md` section before IMPL (or before
    refactor-only's initial CRITIQUE). Every non-`codex` selection requires
    explicit user confirmation before the first dispatch; disclosure alone is
@@ -302,9 +305,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    scoped to remote writer payloads and the exact isolation trade-off: better
    than `claude:<account-alias>` because it avoids self-review, but identical to
    `backend: claude` on the fresh-`Explore` reviewer side, with only the
-   writer's token cost moving to the second account. Review-only records the
-   resolution and any disclosure in the prompt, turn, and final report
-   instead of writing `PROJECT_CONTEXT.md`. Read and follow
+   writer's token cost moving to the second account. Review-only rejects
+   `claude-writer:<account-alias>` at PRE-FLIGHT because that mode has no
+   writer role; for an accepted backend, it records the resolution and any
+   disclosure in the prompt, turn, and final report instead of writing
+   `PROJECT_CONTEXT.md`. Read and follow
    `references/backend-selection.md`; it defines the persisted schema,
    disclosure text, alias lookup, per-node dispatch, continuity rules, and
    guarantee differences.
