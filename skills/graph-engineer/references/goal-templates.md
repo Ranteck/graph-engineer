@@ -8,12 +8,13 @@ Reminder: `/goal` is a stop-gate — evaluated when Claude tries to end the
 turn, not a scheduler. To reset it: `/goal clear`.
 
 **Backend note.** These templates describe the default `codex` backend. If
-you select `backend: claude` or `backend: claude:<account-alias>`, adapt the
-literal “Codex” writer/reviewer wording in your `/goal` to name the selected
-backend instead; do not leave a Codex-only stop condition that the chosen
-backend cannot satisfy. See `backend-selection.md` for resolution,
-confirmation, disclosure, and compatibility rules. This note is intentionally
-centralized rather than repeated throughout every template.
+you select `backend: claude`, `backend: claude:<account-alias>`, or
+`backend: claude-writer:<account-alias>`, adapt the literal “Codex”
+writer/reviewer wording in your `/goal` to name the selected backend instead;
+do not leave a Codex-only stop condition that the chosen backend cannot
+satisfy. See `backend-selection.md` for resolution, confirmation, disclosure,
+and compatibility rules. This note is intentionally centralized rather than
+repeated throughout every template.
 
 ## Two-message mode (recommended when the contract is ambiguous)
 
@@ -218,11 +219,12 @@ Elevated refactor-only template instead of this one.
 Backend qualification: separate canonicalization calls, canonical-thread
 ownership, --resume-last, Codex writer/reviewer reachability, and Codex call
 floors/budgets in this template apply only to backend: codex. For a confirmed
-backend: claude selection, follow references/backend-selection.md instead:
-the selected Claude writer/reviewer, 3 parallel fresh Explore lenses with
-Claude's own canonicalization, and no separate canonicalization call,
-canonical thread, --resume-last, or Codex budget consumed. backend:
-claude:<account-alias> is incompatible with elevated assurance.
+backend: claude or backend: claude-writer:<account-alias> selection, follow
+references/backend-selection.md instead: the selected writer/reviewer pairing,
+3 parallel fresh Explore lenses with Claude's own canonicalization, and no
+separate canonicalization call, canonical thread, --resume-last, or Codex
+budget consumed. backend: claude:<account-alias> is incompatible with elevated
+assurance.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-data-loss) reviewed the implementation,
 Claude normalized and fan-in'd their findings with corroboration recorded as
@@ -240,14 +242,15 @@ edit implementation files directly).
 Stop condition: [your verifiable criterion] AND no valid findings remain
 from any lens, the canonicalization step, or the exit challenger (debatable
 ones get debated, not accepted blindly).
-Elevated-mode pass cap for either compatible backend: at most 5 CRITIQUE
+Elevated-mode pass cap for any compatible backend: at most 5 CRITIQUE
 passes (the initial 3-lens sweep plus the selected backend's canonicalization
 counts as one pass). On backend: codex only, allow at most 13 total Codex
 review/debate calls for this activation — an adjustable starting point, not a
 derived constant; that path's structural review floor is 5 calls (3 lenses +
 canonicalization + exit challenger), while its clean total floor is 6 after
-counting IMPL. backend: claude consumes no Codex budget. If an applicable cap
-is reached without satisfying the stop condition, stop and report the
+counting IMPL. backend: claude and backend:
+claude-writer:<account-alias> consume no Codex budget. If an applicable cap is
+reached without satisfying the stop condition, stop and report the
 remaining findings instead of continuing. If
 the same underlying finding persists for 2 rounds in a row with no net code
 change, stop and tell me instead of continuing — this is the skill's own
@@ -257,8 +260,9 @@ late-lens recovery from references/elevated-assurance.md: wait for every
 lens to reach a terminal state, merge the late result into the finding ledger,
 and repeat canonicalization with the complete ledger — start a replacement
 fresh canonicalization call on backend: codex, or redo Claude's own
-canonicalization on backend: claude — instead of treating this alone as a
-stop condition. For the initial parallel 3-lens dispatch, capture one
+canonicalization on backend: claude or backend:
+claude-writer:<account-alias> — instead of treating this alone as a stop
+condition. For the initial parallel 3-lens dispatch, capture one
 artifact-identity digest immediately before dispatching all 3 and recompute
 and compare it once after all 3 terminate, before fan-in, not per lens. For
 each ordinary single-reviewer CRITIQUE call, reinjection, backend: codex
@@ -291,14 +295,16 @@ or no usable safety precondition.
 No `--write`, same as the standard-mode review-only template, but with the
 3-lens sweep, fan-in, and the selected backend's canonicalization step instead
 of a single reviewer. On the default `codex` path that step is one separate
-canonicalization call; `backend: claude` performs it itself with no separate
+canonicalization call; `backend: claude` and
+`backend: claude-writer:<account-alias>` perform it locally with no separate
 call.
 No REFACTOR, QUALITY GATE, VERIFY, or exit challenger — there is no final
 artifact distinct from what was just reviewed. On the default `codex` path,
 the recommended reviewer budget is 5 calls (the clean structural floor is 4:
 3 lenses + canonicalization, plus at most 1 batched debatable reinjection).
-`backend: claude` consumes no Codex budget. An incomplete lens sweep escalates;
-never silently degrade to reporting only one lens's output.
+`backend: claude` and `backend: claude-writer:<account-alias>` consume no
+Codex budget. An incomplete lens sweep escalates; never silently degrade to
+reporting only one lens's output.
 
 ```
 /goal Use graph-engineer's elevated-assurance review-only mode
@@ -306,11 +312,11 @@ never silently degrade to reporting only one lens's output.
 Backend qualification: separate canonicalization calls, canonical-thread
 ownership, --resume-last, Codex reviewer reachability, and Codex call floors/
 budgets in this template apply only to backend: codex. For a confirmed
-backend: claude selection, follow references/backend-selection.md instead:
-3 parallel fresh Explore lenses with Claude's own canonicalization and no
-separate canonicalization call, canonical thread, --resume-last, or Codex
-budget consumed. backend: claude:<account-alias> is incompatible with
-elevated assurance.
+backend: claude or backend: claude-writer:<account-alias> selection, follow
+references/backend-selection.md instead: 3 parallel fresh Explore lenses with
+Claude's own canonicalization and no separate canonicalization call, canonical
+thread, --resume-last, or Codex budget consumed. backend:
+claude:<account-alias> is incompatible with elevated assurance.
 3 fresh independent lenses (correctness-contracts, integration-state-
 reproducibility, security-abuse-
 data-loss) reviewed it read-only, Claude normalized their findings with
@@ -323,13 +329,15 @@ soon as the report and triage are complete, without moving to REFACTOR.
 On backend: codex only, the clean structural floor is 4 Codex review/total
 calls (3 lenses + canonicalization), and the recommended reviewer budget is 5
 Codex calls total for this activation, allowing at most 1 batched debatable
-reinjection. backend: claude consumes no Codex budget. If a lens
-finishes after canonicalization began, apply the documented late-lens
+reinjection. backend: claude and backend: claude-writer:<account-alias>
+consume no Codex budget. If a lens finishes after canonicalization began,
+apply the documented late-lens
 recovery: wait for every lens to reach a terminal state, merge the late
 result into the finding ledger, and repeat canonicalization with the complete
 ledger — start a replacement fresh canonicalization call on backend: codex,
-or redo Claude's own canonicalization on backend: claude — rather than treating
-this alone as a stop condition. For the initial parallel 3-lens dispatch,
+or redo Claude's own canonicalization on backend: claude or backend:
+claude-writer:<account-alias> — rather than treating this alone as a stop
+condition. For the initial parallel 3-lens dispatch,
 capture one artifact-identity digest immediately before dispatching all 3 and
 recompute and compare it once after all 3 terminate, before fan-in, not per
 lens. For each ordinary single-reviewer CRITIQUE call, reinjection, or backend:
@@ -367,11 +375,12 @@ mode (references/elevated-assurance.md) over the current working tree
 Backend qualification: separate canonicalization calls, canonical-thread
 ownership, --resume-last, Codex writer/reviewer reachability, and Codex call
 floors/budgets in this template apply only to backend: codex. For a confirmed
-backend: claude selection, follow references/backend-selection.md instead:
-the selected Claude writer/reviewer, 3 parallel fresh Explore lenses with
-Claude's own canonicalization, and no separate canonicalization call,
-canonical thread, --resume-last, or Codex budget consumed. backend:
-claude:<account-alias> is incompatible with elevated assurance.
+backend: claude or backend: claude-writer:<account-alias> selection, follow
+references/backend-selection.md instead: the selected writer/reviewer pairing,
+3 parallel fresh Explore lenses with Claude's own canonicalization, and no
+separate canonicalization call, canonical thread, --resume-last, or Codex
+budget consumed. backend: claude:<account-alias> is incompatible with elevated
+assurance.
 The first CRITIQUE traversal used 3 fresh independent lenses (correctness-
 contracts, integration-state-reproducibility, security-
 abuse-data-loss), Claude normalized and fan-in'd their findings with
@@ -385,14 +394,15 @@ first reports no valid findings remaining, the most recent fresh exit challenger
 the final artifact cold with no valid findings before DONE (re-run fresh
 after any REFACTOR triggered by an earlier exit challenger pass, until one
 pass finds nothing against the then-current artifact).
-Elevated-mode pass cap for either compatible backend: at most 5 CRITIQUE
+Elevated-mode pass cap for any compatible backend: at most 5 CRITIQUE
 passes (the initial 3-lens sweep plus the selected backend's canonicalization
 counts as one pass). On backend: codex only, allow at most 13 total Codex
 review/debate calls for this activation — an adjustable starting point, not a
 derived constant; that path's structural review/total floor is 5 calls (3
 lenses + canonicalization + exit challenger) even in a clean cycle. backend:
-claude consumes no Codex budget. If an applicable cap is reached without
-satisfying the stop condition, stop and report the
+claude and backend: claude-writer:<account-alias> consume no Codex budget. If
+an applicable cap is reached without satisfying the stop condition, stop and
+report the
 remaining findings instead of continuing. If the same underlying finding
 persists for 2 rounds in a row with no net code change, stop and tell me
 instead of continuing — this is the skill's own floor and applies even if
@@ -402,8 +412,9 @@ late-lens recovery from references/elevated-assurance.md: wait for every
 lens to reach a terminal state, merge the late result into the finding ledger,
 and repeat canonicalization with the complete ledger — start a replacement
 fresh canonicalization call on backend: codex, or redo Claude's own
-canonicalization on backend: claude — instead of treating this alone as a
-stop condition. For the initial parallel 3-lens dispatch, capture one
+canonicalization on backend: claude or backend:
+claude-writer:<account-alias> — instead of treating this alone as a stop
+condition. For the initial parallel 3-lens dispatch, capture one
 artifact-identity digest immediately before dispatching all 3 and recompute
 and compare it once after all 3 terminate, before fan-in, not per lens. For
 each ordinary single-reviewer CRITIQUE call, reinjection, backend: codex
@@ -480,4 +491,5 @@ or no usable safety precondition.
   refactor-only, and 4 review/total for review-only. The default-codex
   13-call budget and the backend-neutral 5-pass cap are documented in
   `elevated-assurance.md` as adjustable, unbenchmarked ceilings — not as a
-  validated optimum. `backend: claude` consumes no Codex budget.
+  validated optimum. `backend: claude` and
+  `backend: claude-writer:<account-alias>` consume no Codex budget.

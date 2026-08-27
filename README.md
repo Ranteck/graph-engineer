@@ -73,8 +73,8 @@ flowchart TD
 On the default `codex` path, every node is Claude or Codex, never a third
 agent, and every edge is state written to `PROJECT_CONTEXT.md`, not implicit
 memory — that's what makes this a graph/state-machine rather than a single
-long conversation. `backend: claude` continuity additionally relies on the
-orchestrator's conversation memory; see
+long conversation. The local-`Explore` Claude backends' continuity
+additionally relies on the orchestrator's conversation memory; see
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 Which tool call implements each node (subagent, flags) is in the
 [How it works](#how-it-works) table below.
@@ -219,9 +219,10 @@ Code: **[openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)**.
 /codex:setup
 ```
 
-`/codex:setup` should report `Status: ready`. The opt-in `backend: claude` and
-`backend: claude:<account-alias>` routes do not call Codex and therefore do
-not require this plugin, though all backend-resolution and cycle invariants
+`/codex:setup` should report `Status: ready`. The opt-in `backend: claude`,
+`backend: claude:<account-alias>`, and
+`backend: claude-writer:<account-alias>` routes do not call Codex and therefore
+do not require this plugin, though all backend-resolution and cycle invariants
 still apply. The skill also needs
 [Claude Code](https://claude.com/claude-code) itself — this skill relies on
 the built-in `/goal` command; confirm it's available in your installed
@@ -302,12 +303,15 @@ that wrong propagates silently.
 ### Backend selection (optional)
 
 IMPL, CRITIQUE, and REFACTOR can select one backend per cycle with
-`backend: codex`, `backend: claude`, or
-`backend: claude:<account-alias>`; omission keeps `codex` as the default.
+`backend: codex`, `backend: claude`, `backend: claude:<account-alias>`, or
+`backend: claude-writer:<account-alias>`; omission keeps `codex` as the default.
 Any Claude backend gives up the cross-model diversity that the default path
 adds between reviewer and orchestrator; `claude:<account-alias>` also has the
 weakest writer/reviewer isolation because the same retained session remembers
-authoring the code it reviews.
+authoring the code it reviews. `claude-writer:<account-alias>` instead keeps
+the same fresh local `Explore` reviewer as `backend: claude`, improving on the
+retained session's self-review but only moving the writer's token cost to the
+named second account — it does not add independent review.
 
 See the complete
 [`backend-selection.md` protocol](skills/graph-engineer/references/backend-selection.md)
@@ -377,7 +381,8 @@ concurrency, public contract changes, a large diff, or a skipped QUALITY
 GATE).
 
 The diagram and Codex-call counts below describe the default `codex` path.
-With a confirmed `backend: claude`, elevated assurance instead follows
+With a confirmed `backend: claude` or
+`backend: claude-writer:<account-alias>`, elevated assurance instead follows
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md):
 3 parallel fresh `Explore` lenses and Claude's own canonicalization, with no
 separate canonicalization call, canonical thread, `--resume-last`, or Codex
@@ -575,12 +580,12 @@ claims live.
   `--resume-last` to a stray lens thread instead of the intended canonical one
   — see
   [`elevated-assurance.md`](skills/graph-engineer/references/elevated-assurance.md)
-  for why that barrier exists and is not optional. `backend: claude` has
-  neither those Codex-call floors nor that `--resume-last` risk; its distinct
-  limitations are documented in
+  for why that barrier exists and is not optional. `backend: claude` and
+  `backend: claude-writer:<account-alias>` have neither those Codex-call floors
+  nor that `--resume-last` risk; their distinct limitations are documented in
   [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
   Elevated assurance must never activate without your explicit authorization
-  on either compatible backend.
+  on any compatible backend.
 - **Running the reviewer headless can look hung instead of failed.**
   User-reported, not verified by this project: if the target isn't a git
   repo, or the review process is run with stdin attached to a terminal, the
