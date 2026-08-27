@@ -360,8 +360,8 @@ elevated-assurance variants) are all in
 ### Elevated assurance (optional)
 
 Standard single-thread CRITIQUE (used everywhere above) is the default for
-every mode. Elevated assurance is an opt-in variant of node 4: instead of one
-Codex critique thread, 3 independent fresh-thread lenses
+every mode. Elevated assurance is an opt-in variant of node 4: instead of the
+default `codex` path's one Codex critique thread, 3 independent fresh-thread lenses
 (correctness/contracts, integration/state/reproducibility,
 security/abuse/data-loss) review the implementation in parallel, Claude fans
 in and normalizes their findings, and a fresh "exit challenger" pass reviews
