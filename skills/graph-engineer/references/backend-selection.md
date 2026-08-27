@@ -76,6 +76,9 @@ critique-assurance, and checkpoint-commit policy:
    `claude-writer:<account-alias>` at PRE-FLIGHT because that mode has no
    writer role: ask the user to choose `codex`, `claude`, or
    `claude:<account-alias>` instead. Do not silently degrade it to `claude`.
+   When elevated assurance is also requested, `claude:<account-alias>` is
+   unavailable under step 6, so the safe review-only fallbacks are `codex` or
+   `claude` only.
 4. For every non-`codex` value — plain `claude`,
    `claude:<account-alias>`, and `claude-writer:<account-alias>` — require
    explicit user confirmation before the first dispatch. Disclosure alone is
@@ -164,10 +167,12 @@ exists. Review-only must reject this backend at PRE-FLIGHT as described above,
 not emit a disclosure for a cross-session writer dispatch that will never
 happen:
 
-> The feature contract and, for REFACTOR, the triaged fix list and continuity
-> summary will be sent to a different account/session and are subject to that
-> session's own tools, hooks, and retention. This confidentiality caveat is
-> scoped to writer dispatches because CRITIQUE stays local. Avoid this backend
+> The feature contract (when one exists — refactor-only has no SPEC and may
+> have no persisted contract) and, for REFACTOR, the triaged fix list and
+> continuity summary will be sent to a different account/session and are
+> subject to that session's own tools, hooks, and retention. This
+> confidentiality caveat is scoped to writer dispatches because CRITIQUE stays
+> local. Avoid this backend
 > for contracts containing secrets or sensitive data: this skill does not
 > redact or scan writer payloads before sending them. This mode has
 > better writer/reviewer isolation than `claude:<account-alias>`: a fresh local
@@ -397,9 +402,11 @@ and workspace-identity limitations stated there. Unlike
 `claude:<account-alias>`, this writer never saw CRITIQUE or node 5
 reinjections. Every REFACTOR dispatch must therefore include, alongside the
 triaged fix list, the same manually maintained continuity summary kept for the
-local reviewer: prior findings, triage verdicts, and still-applicable
-constraints. Do not send CRITIQUE or node 5 reviewer reinjections to that
-session in this mode.
+local reviewer: (a) prior findings and their stable identities, (b)
+valid/debatable/false-positive verdicts and reasons, (c) fixes already attempted
+and any VERIFY failure classification, and (d) still-applicable constraints.
+Do not send CRITIQUE or node 5 reviewer reinjections to that session in this
+mode.
 
 #### CRITIQUE: fresh local `Explore` reviewer
 
