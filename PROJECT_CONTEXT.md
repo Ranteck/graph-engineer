@@ -447,3 +447,253 @@ actual workspace/repository identity beyond the confirmed session identity
 and local artifact digest (a known, disclosed limitation — see
 `claude:<account-alias>` and `claude-writer:<account-alias>` above — not
 something this cycle attempts to solve).
+
+## project-context-scoped-disclosure
+
+### Quality gate
+
+- **Resolution**: `mode: skipped`
+- **Reasoning**: Same as `backend-selection` above — this repo has no build,
+  lint, test, or CI tooling (no `package.json`, `Makefile`, CI config, or dev
+  docs describing a command). `CLAUDE.md` states explicitly: "There is
+  nothing to build, lint, or test." Per `quality-gate-detection.md`'s
+  resolution order, this is a legitimate `skipped` resolution, not a
+  no-usable-candidate stop condition.
+- **Resolved by**: PRE-FLIGHT, this cycle.
+
+### Critique assurance
+
+- **mode**: `elevated`
+- **resolution**: `user-confirmed-trigger`
+- **trigger matches**: (1) QUALITY GATE resolved to `mode: skipped` — the
+  feature has no executable functional verification able to exercise its
+  behavior, a listed recommendation trigger in `elevated-assurance.md`. (2)
+  The contract changes a protocol/schema shared by every repo that consumes
+  this skill (the internal structure of each consuming repo's own
+  `PROJECT_CONTEXT.md`) and touches this skill's own core safety invariants —
+  CRITIQUE/exit-challenger cold-review independence (node 4,
+  `elevated-assurance.md`) and the "`PROJECT_CONTEXT.md` is Claude's only
+  writable artifact" boundary (`CLAUDE.md`'s Core design invariant, `SKILL.md`
+  intro) — a broad blast radius analogous to "changes a public API/contract
+  shared by more than one component."
+- **trigger evidence**: `PROJECT_CONTEXT.md` `### Quality gate` above;
+  `SKILL.md`'s node 4 CRITIQUE dispatch templates and node 0's writable-
+  artifact invariant; this repo's own `CLAUDE.md` "Core design invariant"
+  section; measured evidence from prior design discussion: real consuming
+  repos' `PROJECT_CONTEXT.md` reached 3,168 lines (`trading-engine_v3`, one
+  active feature section alone 1,753 lines / 112,060 characters) and 2,624
+  lines (`trading-engine_v2`), and `SKILL.md`'s own section-scoping
+  instruction (`SKILL.md:392-398`) was verified absent from the actual
+  dispatch prompt templates (`SKILL.md:401-404`, `513-530`) — a design gap in
+  the skill's own contract, not a hypothetical risk.
+- **User decision**: User confirmed "Elevated" via `AskUserQuestion` at
+  PRE-FLIGHT (scope-level, pre-SPEC), given this exact reasoning.
+- **lens count**: 3
+- **lens set**: correctness-contracts; integration-state-reproducibility;
+  security-abuse-data-loss
+- **exit challenger**: required-before-verify-or-done-rerun-until-clean
+- **CRITIQUE pass cap**: 5 (template default)
+- **Codex review/debate call budget**: 13 (template default)
+- **Resolved by**: PRE-FLIGHT (initial), to be re-evaluated at end of SPEC
+  per `elevated-assurance.md`'s decision timing.
+
+### Backend
+
+- **backend**: `codex` (not specified by user for this cycle)
+- **resolution**: `default-codex`
+- **resolved session**: not-applicable
+- **disclosure**: not-applicable (default backend)
+- **Resolved by**: PRE-FLIGHT, this cycle.
+
+### Checkpoint commits
+
+- **Authorized**: yes (default).
+- **Reasoning**: `commit.gpgsign` is unset, branch is `develop` (not detached
+  HEAD, not `main`), and `.git/hooks/` contains no active hook that would
+  mutate the tree or block on a passphrase (only the repo's own
+  `PreToolUse`/`PostToolUse` Claude Code hooks, which are non-blocking or
+  narrowly scoped — see `.claude/settings.json` and
+  `.claude/hooks/*.sh`). No condition from `SKILL.md` node 0's checkpoint
+  policy applies that would make a non-interactive local commit unsafe.
+
+### Feature contract
+
+#### Current state
+
+**Problem.** Design discussion (this session, prior to SPEC) established:
+`PROJECT_CONTEXT.md` in a consuming repo grows unboundedly because (1) each
+feature's section accretes prose across every SPEC revision, CRITIQUE round,
+and DEBATE/REFACTOR decision with no separation between "what's true now" and
+"how we got here," and (2) nothing ever leaves the file once a feature
+reaches DONE. Splitting into one file per feature (considered and rejected as
+the primary fix) does not address the dominant real cost: a single **active**
+feature's own history can reach five- and six-figure character counts before
+it's ever done (measured: 1,753 lines / 112,060 characters for one section in
+`trading-engine_v3`). Node-specific reviewers also have different, and
+currently unenforced, disclosure requirements: `elevated-assurance.md`
+requires fresh lenses and the exit challenger to review "cold," but nothing
+in `SKILL.md` today stops a full read of a feature's entire accreted history
+from reaching them — a single shared "read the contract in
+`PROJECT_CONTEXT.md`" instruction cannot satisfy per-node disclosure rules
+that differ this much.
+
+**What it does.** Two independent, additive changes to how every
+write-authorized mode (full 8-node cycle, refactor-only) reads and writes a
+feature's section in `PROJECT_CONTEXT.md`:
+
+1. **Split every feature section into two named subheadings, enforced from
+   SPEC onward:**
+   - `#### Current state` — bounded, rewritten in place: the feature
+     contract as it stands right now (edited to reflect the current
+     understanding, not accreted), plus the existing `### Quality gate`,
+     `### Critique assurance`, `### Backend`, and `### Checkpoint commits`
+     resolutions (unchanged in form and position — they already behave as
+     bounded current state), plus one short paragraph naming the latest
+     completed round's outcome (replaced each round, never appended to).
+   - `#### Round log` — append-only, chronological: one bounded entry per
+     completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch, and
+     REFACTOR round. Each entry: round id (matching the existing checkpoint
+     commit round labels, e.g. `IMPL-r00`, `REFACTOR-r04`), node, actor/
+     backend, commit ref if a checkpoint was made, and a one-line outcome.
+     Design-decision rationale, rejected-alternative writeups, and
+     false-positive justifications (DEBATE, node 5, already requires these)
+     belong here, in round form — not woven into `#### Current state`'s
+     contract prose the way `backend-selection`'s "Naming decision" and
+     "Rejected alternative" passages above are today. This repo's own
+     `backend-selection` section is grandfathered as-is (not retrofitted by
+     this cycle); the split applies to features SPEC'd from this cycle
+     forward.
+
+2. **Node-specific default reads (the actual fix for the disclosure-rule
+   mismatch), replacing the single "the contract in `PROJECT_CONTEXT.md`"
+   phrasing in `SKILL.md`'s node 2/4/6 dispatch templates:**
+   - **SPEC**: reads and writes the full section (it authors/edits
+     `#### Current state` and appends the round's entry to `#### Round
+     log`).
+   - **IMPL**: reads `#### Current state` only.
+   - **Ordinary resumed CRITIQUE** (`--resume-last`, standard mode or an
+     elevated-mode resumed canonical round): reads `#### Current state`;
+     relies on Codex's own session memory (`--resume-last`) for round
+     continuity, not a re-read of `#### Round log`.
+   - **Elevated fresh lenses**: reads `#### Current state` only, explicitly
+     excluding `#### Round log` — this is the literal fix for the leakage
+     Codex's critique identified: shared "prior outcome" narrative
+     correlates independent lenses' anchoring.
+   - **Exit challenger**: reads `#### Current state` (contract, current
+     artifact, criteria) only, explicitly excluding `#### Round log` — this
+     is what keeps it a cold review; it must never see the finding ledger or
+     prior REFACTOR outcomes.
+   - **REFACTOR**: the triaged fix list inline (unchanged from today), plus
+     `#### Current state` for grounding — never `#### Round log`.
+   - **DEBATE/Claude's own triage** (not dispatched to a backend actor): may
+     read `#### Round log` in full when needed — the anti-loop cutoff
+     (`SKILL.md`) explicitly requires comparing consecutive CRITIQUE passes,
+     which needs this history; Claude is not subject to the "stay cold"
+     disclosure rule the dispatched reviewers are.
+   - **A human or a future cycle** investigating why a past decision was
+     made: reads `#### Round log` directly by round id — this is its
+     intended audience, not a dispatched actor.
+
+3. **Archival at the terminal transition, formalizing a second, narrowly-
+   scoped writable path.** Today, `CLAUDE.md`'s Core design invariant and
+   `SKILL.md`'s intro both state `PROJECT_CONTEXT.md` is "Claude's only
+   writable artifact" across the cycle. This feature widens that boundary
+   explicitly, not implicitly:
+   - New path: `PROJECT_CONTEXT.archive/<feature-slug>.md`, one file per
+     archived feature, in the same consuming repo as `PROJECT_CONTEXT.md`
+     (sibling directory, not inside `.git`).
+   - **Trigger**: only at VERIFY's pass in the full 8-node write cycle, or at
+     the final DONE-clearing CRITIQUE/exit-challenger pass in refactor-only —
+     i.e. only once the cycle has already reached its existing terminal
+     success condition. This is not a new node; it is folded into the
+     existing terminal-commit step under node 3's "Checkpoint commit on a
+     passing gate" mechanics, using `Cycle-State: COMPLETE` (the value that
+     step's own text already reserves for this moment) instead of
+     `CHECKPOINT`.
+   - **What moves**: the ENTIRE feature section — `#### Current state` and
+     `#### Round log` — verbatim, losslessly. No summarization, no
+     compaction. `PROJECT_CONTEXT.archive/<feature-slug>.md` is the full
+     record; nothing is thrown away.
+   - **What replaces it**: `PROJECT_CONTEXT.md`'s `## <feature-name>` heading
+     is replaced with a one-line pointer: feature name, one-line outcome
+     summary, completion date, the archive file's relative path, and the
+     short hash of the **last checkpoint commit before this archival move**
+     (the commit that actually holds the feature's finished work). **Not**
+     the archival commit's own hash — a commit's hash is computed from its
+     tree, and that tree would contain the pointer that contains the hash,
+     which is an unresolvable fixed point (Codex's IMPL correctly refused to
+     implement the earlier, self-referential wording and asked for a fix
+     before writing anything; this replaces that wording). The archival
+     commit itself needs no stored hash to be located: it is
+     self-identifying via its own `Cycle-State: COMPLETE` message, exactly
+     like every other checkpoint commit is located by its `Cycle-State`/round
+     label — `git log --grep` for that trailer plus the feature name finds
+     it directly.
+   - **Atomicity**: the archive-file write, the `PROJECT_CONTEXT.md`
+     rewrite, and the terminal `git commit` happen together as one commit —
+     never as separate commits, and never with one landed and the other
+     pending. If checkpoint commits were not authorized for this cycle (node
+     0), skip the archival move entirely and escalate to the user instead of
+     leaving an uncommitted archive write on disk.
+   - **Interruption/inconsistency handling**: a future cycle entering
+     PRE-FLIGHT on this repo must check, for every feature heading in
+     `PROJECT_CONTEXT.md`, that a pointer's claimed archive file actually
+     exists, and that no `PROJECT_CONTEXT.archive/*.md` file exists without a
+     corresponding pointer. Either mismatch is a stop-and-escalate condition
+     at PRE-FLIGHT, not something to silently repair or guess about.
+
+**Explicitly out of scope for this feature** (do not attempt in this cycle):
+lossy compaction or summarization of `#### Round log` content, at any point —
+Codex's own critique of the alternative "compact instead" design rejected
+this as the wrong axis; splitting the **active** (not-yet-DONE) file into one
+file per feature — the measured single-feature-section pathology
+(1,753 lines/112,060 characters while still active) is exactly what that
+approach fails to address, per Codex's critique; retrofitting the split onto
+`backend-selection`'s existing section (grandfathered as-is); changing the
+fixed 3-lens set, the exit-challenger fan-in barrier, or any other
+`elevated-assurance.md` mechanic not directly implicated by disclosure
+scoping; any change to `quality-gate-detection.md`'s resolution algorithm.
+
+**Consistency requirement.** Following the same "link out to a reference,
+keep the node body describing the invariant" precedent already used for
+`elevated-assurance.md` and `backend-selection.md`: add a new reference file
+`references/context-lifecycle.md` documenting the two-subheading split, the
+node-specific read rules, and the archival mechanics in full; `SKILL.md`'s
+node 1 (SPEC), node 2 (IMPL), node 4 (CRITIQUE — both standard and elevated
+paths), node 5 (DEBATE), node 6 (REFACTOR), and node 3's "Checkpoint commit
+on a passing gate" paragraph each get a short pointer to it rather than
+inlining these mechanics. `README.md` gets a short mention with a link,
+consistent with this repo's own `CLAUDE.md` guidance that `README.md` and
+`SKILL.md` share claims, not layout, and the existing precedent of not
+duplicating `elevated-write-goal`'s template into `README.md`. This repo's
+own `CLAUDE.md` "Core design invariant" section must be updated to name the
+second, narrowly-scoped writable path (`PROJECT_CONTEXT.archive/*.md`) rather
+than continuing to state `PROJECT_CONTEXT.md` is the *only* writable
+artifact — word it so the exception stays narrow (this path, this trigger,
+this atomicity requirement) rather than reading as a general loosening.
+`AGENTS.md`, if it restates the writable-artifact invariant, needs the same
+update.
+
+Latest completed round: `IMPL-r00` — the scoped context lifecycle, dispatch
+restrictions, and terminal archival protocol are implemented on disk.
+
+#### Round log
+
+##### SPEC-r00
+
+- **Node**: SPEC
+- **Actor/backend**: Claude orchestrator / `backend: codex`
+- **Commit**: none
+- **Outcome**: Finalized the feature contract for bounded current state,
+  node-scoped reads, and lossless terminal archival.
+- **Decision notes**: The archive pointer records the last finished-work
+  checkpoint hash, not the archival commit's self-hash, avoiding an impossible
+  Git fixed point.
+
+##### IMPL-r00
+
+- **Node**: IMPL
+- **Actor/backend**: Codex / `backend: codex`
+- **Commit**: none
+- **Outcome**: Added the lifecycle reference, node-scoped dispatch rules,
+  atomic archive protocol, and required consistency pointers.

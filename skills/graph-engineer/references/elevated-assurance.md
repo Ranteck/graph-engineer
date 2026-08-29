@@ -160,9 +160,11 @@ GATE before CRITIQUE resumes (see the amendment in
 
 ## The three lenses
 
-Each lens receives the same feature contract, the same frozen artifact
-identity, and the same read-only instruction. It does **not** receive the
-builder's (IMPL's) narrative, and it does not see another lens's output. Each
+Each lens receives the same feature's `#### Current state` subsection, the
+same frozen artifact identity, and the same read-only instruction. It never
+receives `#### Round log`; follow `context-lifecycle.md`. It does **not**
+receive the builder's (IMPL's) narrative, and it does not see another lens's
+output. Each
 lens may report a concrete defect outside its assigned angle — the angle is a
 minimum responsibility, not a blindfold.
 
@@ -263,8 +265,9 @@ Each lens call:
 
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review the
-current implementation of [feature] against PROJECT_CONTEXT.md, focused on
-[lens angle], but report any other severe defect you notice too. Challenge
+current implementation of [feature] against only its #### Current state
+subsection in PROJECT_CONTEXT.md; do not read #### Round log. Focus on [lens
+angle], but report any other severe defect you notice too. Challenge
 the approach, design choices, and assumptions — don't just list defects.
 Artifact identity: [digest].
 Read-only: do not fix anything, just report findings. --fresh --wait")
@@ -301,7 +304,8 @@ prevent both.
 4. Claude performs fan-in and normalization (see below) once all 3 are
    terminal.
 5. Only then start one fresh, read-only **canonicalization** call. Give it
-   the contract, the same artifact identity used for the lenses, **the 3
+   `#### Current state` but not `#### Round log`, the same artifact identity
+   used for the lenses, **the 3
    raw lens reports verbatim** (not only the normalized ledger — without the
    raw reports it has no way to judge whether Claude's normalization merged
    or dropped something incorrectly), and the normalized ledger built from
@@ -310,8 +314,9 @@ prevent both.
 
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Three independent
-   read-only reviews of [feature] against PROJECT_CONTEXT.md were just
-   completed. Raw reports below, followed by Claude's normalization of them
+   read-only reviews of [feature] against only its #### Current state
+   subsection in PROJECT_CONTEXT.md were just completed. Do not read ####
+   Round log. Raw reports below, followed by Claude's normalization of them
    into one finding per underlying claim. Challenge the normalization
    against the raw reports — does it accurately represent them, did
    anything get merged that shouldn't have been, did anything get dropped?
@@ -391,7 +396,7 @@ write cycle, or **DONE** in refactor-only, which has no VERIFY node. Runs after
 DEBATE first reaches "no valid findings remain."
 
 - Must be fresh and read-only; confirm no other Codex task is active first.
-- Give it the original contract (or, in refactor-only, the requested scope
+- Give it `#### Current state` only (or, in refactor-only, the requested scope
   and criteria — there is no SPEC contract), the current final artifact, and
   any user-supplied criteria — but **not** the prior finding ledger. Its
   value is a cold, holistic read of the result, not a continuation of the
@@ -419,8 +424,9 @@ DEBATE first reaches "no valid findings remain."
 
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Review the current final
-implementation of [feature] against PROJECT_CONTEXT.md (or the requested
-scope/criteria in refactor-only) and these criteria if any: [criteria]. You
+implementation of [feature] against only its #### Current state subsection in
+PROJECT_CONTEXT.md; do not read #### Round log (in refactor-only, use the
+requested scope/criteria instead). Apply these criteria if any: [criteria]. You
 have no prior review history for this — treat this as a first, cold look at
 the finished result.
 Artifact identity: [digest].

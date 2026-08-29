@@ -333,8 +333,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    instead of redetecting it. If no usable candidate or explicit opt-out
    exists, stop before IMPL or the initial refactor-only CRITIQUE. In
    autonomous `/goal` runs, treat this as an escalation condition, never a
-   silent skip. `PROJECT_CONTEXT.md` is Claude's only writable artifact across
-   the whole cycle: PRE-FLIGHT writes this QUALITY GATE resolution metadata
+   silent skip. `PROJECT_CONTEXT.md` is Claude's only ordinary writable
+   file-content artifact across the cycle: PRE-FLIGHT writes this QUALITY
+   GATE resolution metadata
    and the `### Backend` resolution, and — see immediately below — writes
    `### Critique assurance` too, but
    only in refactor-only (there is no SPEC there to defer to). In the
@@ -342,7 +343,10 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    triggers here; it writes nothing for `### Critique assurance` yet — SPEC
    is what finalizes and persists that resolution, once the actual contract
    exists to evaluate triggers against. Claude never edits implementation
-   files.
+   files. The sole additional file-content path is the terminal, atomic
+   archival move to `PROJECT_CONTEXT.archive/<feature-slug>.md`; it is not
+   available during an active cycle. Follow
+   `references/context-lifecycle.md` for that narrow exception.
 
    Also make an initial elevated-assurance evaluation here: check explicit
    user authorization and any risk trigger visible from the requested scope
@@ -352,6 +356,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    refactor-only, since there is no SPEC, this PRE-FLIGHT evaluation is final:
    persist `### Critique assurance` here from the requested scope and the
    code already on disk.
+
+   Before making any context write, also run the two-way pointer/archive
+   consistency check in `references/context-lifecycle.md`. A missing claimed
+   archive, orphan archive, or duplicate pointer is a stop-and-escalate
+   condition, never an automatic repair.
 
    Between the successful cycle-entry clean check and IMPL starting, the only
    expected tree changes are this cycle's own namespaced QUALITY GATE,
@@ -373,7 +382,8 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 1. **SPEC** (Claude, cheap) — Write the component's contract into
    `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
    does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
-   Claude's only writable artifact across the entire cycle: PRE-FLIGHT writes
+   Claude's only ordinary writable file-content artifact while the cycle is
+   active: PRE-FLIGHT writes
    the `### Quality gate` and `### Backend` resolution metadata there, and
    SPEC writes the feature contract and finalizes `### Critique assurance`
    there (see immediately below). The orchestrating Claude never edits
@@ -398,11 +408,22 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    contaminating or being contaminated by an unrelated feature's contract
    in the same file.
 
+   **Bounded current state and history.** Read and write the full active
+   feature section. Keep its contract under `#### Current state`, rewrite that
+   subsection in place, and append the completed SPEC revision under
+   `#### Round log`. Follow `references/context-lifecycle.md` for the exact
+   section shape, round-entry fields, and grandfathering rule.
+
 2. **IMPL** (selected backend writes; Codex by default) —
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Implement [feature]
-   following the contract in PROJECT_CONTEXT.md. --write")
+   following only its #### Current state subsection in PROJECT_CONTEXT.md;
+   do not read #### Round log. --write")
    ```
+
+   This current-state-only default applies to every selected writer backend;
+   see `references/context-lifecycle.md` for the disclosure matrix and round
+   recording rules.
 
    **Backend dispatch.** The invocation above is the unchanged default
    `codex` path. For `claude`, `claude:<account-alias>`, or
@@ -495,6 +516,12 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    file. It authorizes checkpoint commits only — never editing file content,
    never `push`, never rewriting history.
 
+   **Terminal archival.** After the existing terminal success condition, use
+   the atomic archival transition in `references/context-lifecycle.md` and a
+   single `Cycle-State: COMPLETE` commit. If checkpoints were unauthorized or
+   the archive/pointer pair is inconsistent, do not partially archive; stop
+   and escalate as that reference requires.
+
 4. **CRITIQUE** (selected backend critiques adversarially; Codex by default,
    with sandbox-enforced no-write behavior only on that path) — On the default
    Codex path, the first CRITIQUE call in a
@@ -513,13 +540,15 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    ```
    # First CRITIQUE of the cycle (fresh thread):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   the current implementation of [feature] against PROJECT_CONTEXT.md.
+   the current implementation of [feature] against only its #### Current
+   state subsection in PROJECT_CONTEXT.md. Do not read #### Round log.
    Challenge the approach, design choices, and assumptions — don't just list
    defects. Read-only: do not fix anything, just report findings.")
 
    # Every subsequent CRITIQUE call in the same cycle:
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   the current implementation of [feature] against PROJECT_CONTEXT.md,
+   the current implementation of [feature] against only its #### Current
+   state subsection in PROJECT_CONTEXT.md; do not read #### Round log,
    considering the prior findings, triage decisions, and any VERIFY failure
    supplied with this request.
    Continuity summary if the fresh REFACTOR fallback was used: [concise
@@ -550,7 +579,9 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    # continuity summary if node 6 had to use it):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
    [scope] again now that the previously agreed fixes have been applied,
-   considering the prior findings and triage decisions.
+   considering the prior findings and triage decisions. If this write-
+   authorized feature has a #### Current state subsection, use only that
+   subsection and do not read #### Round log.
    Continuity summary if the fresh REFACTOR fallback was used: [concise
    relevant prior findings, triage decisions, and constraints].
    Challenge the approach, design choices, and assumptions — don't just list
@@ -558,6 +589,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    --resume-last")
    ```
    Return the findings verbatim first, without summarizing.
+
+   All standard fresh and resumed reviewer paths use this current-state-only
+   disclosure; resumed Codex continuity comes from `--resume-last`, not from
+   rereading the log. See `references/context-lifecycle.md` for the complete
+   node-specific read rules and completed-pass recording.
 
    **Backend dispatch.** The invocations and `--resume-last` rules above are
    the unchanged default `codex` path. For `claude`,
@@ -605,6 +641,12 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    `mode: elevated`. In review-only, require the user's explicit request to be
    recorded in the prompt, the Claude turn, and the final report.
 
+   Every elevated fresh lens and exit challenger reads `#### Current state`
+   only and explicitly excludes `#### Round log`; elevated resumed canonical
+   rounds use the same default and rely on session continuity. Follow the
+   disclosure rules in `references/context-lifecycle.md` in addition to the
+   elevated mechanics above.
+
    **On the default Codex path, read-only is enforced, not just requested.**
    CRITIQUE's read-only
    behavior isn't a soft prompt instruction Codex could ignore — the
@@ -630,6 +672,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    Without this step, the selected reviewer effectively self-reviews its
    backend's work with no filter, and the cycle can oscillate or apply
    unnecessary changes — DEBATE is what prevents an unarbitrated self-fix loop.
+
+   DEBATE may read the active feature's `#### Round log` in full when needed,
+   including for the anti-loop comparison, and records each completed triage
+   batch there. Follow `references/context-lifecycle.md`; this permission is
+   for the orchestrating Claude, not a dispatched reviewer.
 
    **Elevated assurance fan-in.** When node 4 ran in elevated mode, first
    normalize the 3 lenses' reports into one finding record per underlying
@@ -682,8 +729,14 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 6. **REFACTOR** (selected backend fixes; Codex by default) —
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Apply the following
-   agreed fixes: [triaged list]. --resume-last --write")
+   agreed fixes: [triaged list]. Ground the work in only the active feature's
+   #### Current state subsection in PROJECT_CONTEXT.md; do not read #### Round
+   log. --resume-last --write")
    ```
+
+   Every writer backend receives the triaged fix list inline plus
+   `#### Current state`, never `#### Round log`. Follow
+   `references/context-lifecycle.md` for disclosure and round recording.
 
    **Backend dispatch.** The invocation and recovery protocol below are the
    unchanged default `codex` path. For `claude`,
@@ -711,7 +764,7 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    condition, not a silent continue.
 
    Before starting that fresh session, build a concise continuity summary
-   from the current feature's `PROJECT_CONTEXT.md` section and the
+   from the current feature's `#### Current state` subsection and the
    conversation: the relevant prior findings, Claude's triage decisions, and
    any still-applicable constraints. Include that summary inline in the fresh
    REFACTOR prompt alongside the agreed fixes. Because this session becomes
@@ -853,8 +906,9 @@ variant).
 - A read-only Codex session may reject a resumed write request; recover with a
   fresh session that has `--write` from the start, as described under
   REFACTOR.
-- `PROJECT_CONTEXT.md` is per-repo, not global; never write to the user's
-  global Claude Code instructions file.
+- `PROJECT_CONTEXT.md` and its narrowly scoped sibling archive
+  `PROJECT_CONTEXT.archive/` are per-repo, not global; never write to the
+  user's global Claude Code instructions file.
 - **A checkpoint commit is not an approval.** The `Cycle-State: CHECKPOINT`
   commits described under QUALITY GATE only prove the tree passed mechanical
   checks — never that CRITIQUE or VERIFY have signed off. Treat every one as

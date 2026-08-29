@@ -248,11 +248,13 @@ owner and DEBATE arbiter and never uses Edit/Write on implementation files.
 #### IMPL and REFACTOR: `general-purpose` writer
 
 Use `Agent(subagent_type: "general-purpose", ...)` for both writer nodes.
-For IMPL, provide the active feature contract from `PROJECT_CONTEXT.md` and
-instruct the agent to implement it directly with Edit/Write. For REFACTOR,
-provide the triaged valid findings, relevant contract constraints, and the
-continuity summary described below, and instruct the agent to apply those
-fixes directly with Edit/Write. Every writer return still routes through
+For IMPL, provide only the active feature's `#### Current state` subsection
+from `PROJECT_CONTEXT.md`, never `#### Round log`, and instruct the agent to
+implement it directly with Edit/Write. For REFACTOR, provide the triaged valid
+findings, relevant constraints from `#### Current state`, and the continuity
+summary described below—again never the round log—and instruct the agent to
+apply those fixes directly with Edit/Write. Follow `context-lifecycle.md` for
+the disclosure matrix. Every writer return still routes through
 QUALITY GATE before CRITIQUE exactly as `../SKILL.md` requires.
 
 This preserves the core orchestration invariant: a dispatched writer — not
@@ -273,6 +275,12 @@ and `ExitPlanMode`). That is a tool-list restriction, not a sandbox guarantee:
 mandatory before/after artifact-identity comparison above detects drift; it
 does not make the call structurally read-only or comparable to Codex's
 OS/process sandbox.
+
+Every reviewer receives only the active feature's `#### Current state`
+subsection plus any required inline continuity summary; never disclose
+`#### Round log` to the dispatched reviewer. Elevated fresh lenses and the
+exit challenger remain cold under the stricter rules in
+`context-lifecycle.md`.
 
 Return the reviewer's findings verbatim before Claude performs the normal
 valid/debatable/false-positive triage. When elevated assurance is separately
@@ -301,8 +309,9 @@ those raw reports.
 
 Plain `Agent()` subagents do not have a `--resume-last`-style memory channel.
 Treat every call as fresh. The orchestrator must build and include a concise
-continuity summary from the active `PROJECT_CONTEXT.md` section and its own
-conversation state:
+continuity summary from the active `#### Current state`, its own conversation
+state, and `#### Round log` only when the orchestrator needs it for historical
+triage. The dispatched actor receives the summary, never the log itself:
 
 - prior findings and their stable identities;
 - Claude's valid/debatable/false-positive verdicts and reasons;
@@ -343,9 +352,10 @@ causal convention rather than a guarantee. If the target stops responding,
 stop and ask the user to help unblock the session instead of redispatching or
 guessing that the node completed.
 
-For IMPL and REFACTOR, send the active contract or triaged fixes and authorize
-the target session to edit. For CRITIQUE, send the current scope, contract,
-prior findings and triage history, and an explicit adversarial, read-only
+For IMPL and REFACTOR, send `#### Current state` or the triaged fixes plus its
+relevant constraints, never `#### Round log`, and authorize the target session
+to edit. For CRITIQUE, send `#### Current state`, prior findings and triage
+history inline, and an explicit adversarial, read-only
 instruction. Because the same target session retains its conversation, it
 already has continuity; still include the current triage decisions and
 constraints so the requested review state is explicit rather than inferred.

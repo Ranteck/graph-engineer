@@ -16,6 +16,7 @@ skills/graph-engineer/
     ├── quality-gate-detection.md      # generic quality-gate command resolver algorithm
     ├── elevated-assurance.md          # optional opt-in multi-lens CRITIQUE variant
     ├── backend-selection.md           # opt-in per-cycle writer/reviewer routing
+    ├── context-lifecycle.md            # scoped feature context, round history, and archival
     └── sources.md                     # provenance: what's official Anthropic/OpenAI vs. not
 ```
 
@@ -55,7 +56,8 @@ consistent across all of them:
 anywhere in the cycle** — the writer selected at PRE-FLIGHT does: Codex by
 default via `codex:codex-rescue --write`, unless the user opts into a Claude
 backend for that cycle. `PROJECT_CONTEXT.md` in the *consuming* repo is the
-orchestrating Claude's only writable file-content artifact across the cycle:
+orchestrating Claude's only ordinary writable file-content artifact while the
+cycle is active:
 PRE-FLIGHT writes the `### Quality gate` and `### Backend` resolution metadata
 there, SPEC writes the feature contract there, and (in write-authorized modes)
 PRE-FLIGHT/SPEC also finalize the `### Critique assurance` resolution there
@@ -70,6 +72,16 @@ exists: preserving Claude's context/tokens for orchestration and judgment,
 reducing correlated self-review failure by putting Claude in the arbitration
 path, and specializing the dispatched writer/reviewer and the orchestrating
 contract/triage roles.
+
+The sole file-content exception is terminal archival: only after VERIFY passes
+(or refactor-only reaches its final DONE-clearing review), and only when
+checkpoint commits were authorized, Claude may move the entire feature section
+verbatim to `PROJECT_CONTEXT.archive/<feature-slug>.md` and replace it with the
+required pointer. Both file changes must land together in the single terminal
+`Cycle-State: COMPLETE` commit; any missing pointer/archive counterpart is a
+PRE-FLIGHT stop condition, never permission to repair it automatically. See
+`references/context-lifecycle.md`. This exception does not permit writes to any
+other file-content path.
 
 One narrow, explicitly scoped exception: when PRE-FLIGHT has authorized checkpoint
 commits, Claude may run local `git commit` after a passing QUALITY GATE (node 3),

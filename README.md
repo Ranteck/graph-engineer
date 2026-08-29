@@ -101,6 +101,17 @@ out. See
 for the resolver order, safety checks, cache schema, bundled-command split,
 retry cap, and escalation rules.
 
+Active feature entries keep bounded truth under `#### Current state` and an
+append-only audit history under `#### Round log`. Each node receives only its
+default disclosure—fresh elevated lenses and the exit challenger never see
+the log—and, when checkpoint commits are authorized, a successfully completed
+write cycle atomically moves the full section to
+`PROJECT_CONTEXT.archive/<feature-slug>.md` (otherwise it escalates without a
+partial move). See the complete
+[`context-lifecycle.md` protocol](skills/graph-engineer/references/context-lifecycle.md)
+for the section shape, node-specific reads, terminal pointer, and interruption
+checks.
+
 Node 5 isn't a flat pass/fail filter — "debatable" findings open their own
 small sub-loop, invisible in the 8-node diagram above:
 
