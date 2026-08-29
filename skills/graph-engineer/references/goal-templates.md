@@ -51,6 +51,10 @@ report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
 risk-trigger evaluation matches and no decision from me is available, stop
 before IMPL and escalate instead of proceeding under either standard or
 elevated mode.
+Before this goal may complete after VERIFY passes, execute the terminal
+archival transition in references/context-lifecycle.md. If archival is
+unauthorized or any slug, path, hash, identity, or archive-consistency check
+fails, stop and report that escalation instead of ending as successful.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -85,6 +89,10 @@ report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
 risk-trigger evaluation matches and no decision from me is available, stop
 before IMPL and escalate instead of proceeding under either standard or
 elevated mode.
+Before this goal may complete after VERIFY passes, execute the terminal
+archival transition in references/context-lifecycle.md. If archival is
+unauthorized or any slug, path, hash, identity, or archive-consistency check
+fails, stop and report that escalation instead of ending as successful.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -109,6 +117,10 @@ and report instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
 risk-trigger evaluation matches and no decision from me is available, stop
 before IMPL and escalate instead of proceeding under either standard or
 elevated mode.
+Before this goal may complete after VERIFY passes, execute the terminal
+archival transition in references/context-lifecycle.md. If archival is
+unauthorized or any slug, path, hash, identity, or archive-consistency check
+fails, stop and report that escalation instead of ending as successful.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -133,6 +145,10 @@ instead of continuing. If PRE-FLIGHT or SPEC's elevated-assurance
 risk-trigger evaluation matches and no decision from me is available, stop
 before IMPL and escalate instead of proceeding under either standard or
 elevated mode.
+Before this goal may complete after VERIFY passes, execute the terminal
+archival transition in references/context-lifecycle.md. If archival is
+unauthorized or any slug, path, hash, identity, or archive-consistency check
+fails, stop and report that escalation instead of ending as successful.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -167,6 +183,12 @@ evaluation (there is no SPEC in this entry path, so PRE-FLIGHT's read is
 final) matches and no decision from me is available, stop before the first
 CRITIQUE and escalate instead of proceeding under either standard or
 elevated mode.
+Before this goal may complete after the final clean pass, execute the terminal
+archival transition in references/context-lifecycle.md. If zero REFACTOR
+rounds ran because the first CRITIQUE found no valid findings, use that
+reference's context-only no-op finalization and skip archival. If either
+finalization cannot complete safely, stop and report the escalation instead
+of ending as successful.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -286,6 +308,10 @@ ambiguous. If no usable quality-gate resolution
 exists and no explicit opt-out was given, or one activation reaches the
 absolute cap of 3 failed QUALITY GATE runs, stop and report instead of
 continuing.
+Before this goal may complete after VERIFY passes, execute the terminal
+archival transition in references/context-lifecycle.md. If archival is
+unauthorized or any slug, path, hash, identity, or archive-consistency check
+fails, stop and report that escalation instead of ending as successful.
 At any node, stop and report immediately on an environmental failure
 (timeout, out-of-memory, read-only filesystem, or a missing command/
 dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,
@@ -441,6 +467,12 @@ of 3 failed QUALITY GATE runs, stop and report instead of continuing. If
 PRE-FLIGHT's elevated-assurance risk-trigger evaluation matches and no
 decision from me is available, stop before the first CRITIQUE and escalate
 instead of proceeding under either standard or elevated mode.
+Before this goal may complete after the final clean pass, execute the terminal
+archival transition in references/context-lifecycle.md. If zero REFACTOR
+rounds ran because the first CRITIQUE found no valid findings, use that
+reference's context-only no-op finalization and skip archival. If either
+finalization cannot complete safely, stop and report the escalation instead
+of ending as successful.
 At any node, stop and report immediately on an environmental failure
 (timeout, out-of-memory, read-only filesystem, or a missing command/
 dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,

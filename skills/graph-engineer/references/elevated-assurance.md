@@ -160,9 +160,12 @@ GATE before CRITIQUE resumes (see the amendment in
 
 ## The three lenses
 
-Each lens receives the same feature's `#### Current state` subsection, the
-same frozen artifact identity, and the same read-only instruction. It never
-receives `#### Round log`; follow `context-lifecycle.md`. It does **not**
+Each lens receives the same feature's `#### Current state` text inline as a
+quoted block, the same frozen artifact identity, and the same read-only
+instruction. It is instructed not to open `PROJECT_CONTEXT.md` or read
+`#### Round log`; follow `context-lifecycle.md`. This is a prompt-level
+disclosure rule, not a sandboxed read boundary: Codex's read-only sandbox
+blocks writes, not reads. The lens does **not**
 receive the builder's (IMPL's) narrative, and it does not see another lens's
 output. Each
 lens may report a concrete defect outside its assigned angle — the angle is a
@@ -265,9 +268,11 @@ Each lens call:
 
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review the
-current implementation of [feature] against only its #### Current state
-subsection in PROJECT_CONTEXT.md; do not read #### Round log. Focus on [lens
-angle], but report any other severe defect you notice too. Challenge
+current implementation of the active feature [feature]. Permitted context,
+quoted verbatim from its #### Current state:
+> [quoted Current state text]
+Do not open PROJECT_CONTEXT.md or read #### Round log. Focus on [lens angle],
+but report any other severe defect you notice too. Challenge
 the approach, design choices, and assumptions — don't just list defects.
 Artifact identity: [digest].
 Read-only: do not fix anything, just report findings. --fresh --wait")
@@ -288,6 +293,15 @@ resolves to — corrupting continuity without any error being raised, and
 nothing in the runtime stops a stray fresh call from being started
 concurrently by mistake either. The barrier below exists specifically to
 prevent both.
+
+That recency-based identity weakness also exists outside this fan-in window,
+where there is no equivalent no-intervening-task barrier. The active-feature
+check required below mitigates but does not solve it. A concrete occurrence
+was observed during the `project-context-scoped-disclosure` cycle: a
+`--resume-last --write` REFACTOR call resolved to an unrelated,
+already-cancelled session, apparently because cancelling that session updated
+its recency stamp. Treat cross-feature memory as a hard stop, not harmless
+background context.
 
 1. Dispatch all 3 fresh, read-only lens `Agent` calls together, in the
    foreground and waiting for each to finish — pass `--fresh --wait` on
@@ -314,9 +328,11 @@ prevent both.
 
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Three independent
-   read-only reviews of [feature] against only its #### Current state
-   subsection in PROJECT_CONTEXT.md were just completed. Do not read ####
-   Round log. Raw reports below, followed by Claude's normalization of them
+   read-only reviews of the active feature [feature] were just completed.
+   Permitted feature context, quoted verbatim from its #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. Raw reports below,
+   followed by Claude's normalization of them
    into one finding per underlying claim. Challenge the normalization
    against the raw reports — does it accurately represent them, did
    anything get merged that shouldn't have been, did anything get dropped?
@@ -333,7 +349,10 @@ prevent both.
    intervene before a deliberate thread replacement (the exit challenger).
 7. Every later DEBATE-driven reinjection, REFACTOR, and subsequent ordinary
    CRITIQUE call in this cycle uses `--resume-last` as in standard mode —
-   now targeting the canonicalization thread.
+   now targeting the canonicalization thread. Each prompt must name the active
+   feature and instruct: "if your resumed session's own memory concerns a
+   different feature than the one named here, stop and report that instead of
+   proceeding."
 
 The 3 lens calls, Claude's fan-in, and the canonicalization call together
 count as **one** CRITIQUE pass (see the accounting rule this reference's
@@ -396,15 +415,18 @@ write cycle, or **DONE** in refactor-only, which has no VERIFY node. Runs after
 DEBATE first reaches "no valid findings remain."
 
 - Must be fresh and read-only; confirm no other Codex task is active first.
-- Give it `#### Current state` only (or, in refactor-only, the requested scope
-  and criteria — there is no SPEC contract), the current final artifact, and
-  any user-supplied criteria — but **not** the prior finding ledger. Its
+- Give it the active feature's `#### Current state` text inline as a quoted
+  block (or, in refactor-only, the quoted requested scope and criteria), the
+  current final artifact, and any user-supplied criteria. Instruct it not to
+  open `PROJECT_CONTEXT.md`; do **not** provide the prior finding ledger. Its
   value is a cold, holistic read of the result, not a continuation of the
   prior triage.
 - When it completes, it **intentionally** becomes the new latest/canonical
   thread — this is expected, not a bug.
 - If it reports **no valid findings**, the gate is satisfied: proceed to
-  VERIFY (or DONE in refactor-only).
+  VERIFY in the full cycle. In refactor-only, before declaring DONE execute
+  the terminal archival transition in `context-lifecycle.md`, or its explicit
+  zero-REFACTOR no-op finalization when that exception applies.
 - If it reports findings that DEBATE classifies as valid, they go through
   REFACTOR/QUALITY GATE like any other valid finding, resuming its thread
   with `--resume-last` and carrying a concise inline continuity summary of
@@ -424,9 +446,12 @@ DEBATE first reaches "no valid findings remain."
 
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Review the current final
-implementation of [feature] against only its #### Current state subsection in
-PROJECT_CONTEXT.md; do not read #### Round log (in refactor-only, use the
-requested scope/criteria instead). Apply these criteria if any: [criteria]. You
+implementation of the active feature [feature]. Permitted context, quoted
+verbatim from its #### Current state (in refactor-only, quote the requested
+scope/criteria instead):
+> [quoted Current state or refactor-only scope/criteria]
+Do not open PROJECT_CONTEXT.md or read #### Round log. Apply these criteria if
+any: [criteria]. You
 have no prior review history for this — treat this as a first, cold look at
 the finished result.
 Artifact identity: [digest].

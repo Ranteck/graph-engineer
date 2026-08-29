@@ -537,7 +537,7 @@ from reaching them — a single shared "read the contract in
 `PROJECT_CONTEXT.md`" instruction cannot satisfy per-node disclosure rules
 that differ this much.
 
-**What it does.** Two independent, additive changes to how every
+**What it does.** Four coordinated changes to how every
 write-authorized mode (full 8-node cycle, refactor-only) reads and writes a
 feature's section in `PROJECT_CONTEXT.md`:
 
@@ -548,8 +548,9 @@ feature's section in `PROJECT_CONTEXT.md`:
      understanding, not accreted), plus the existing `### Quality gate`,
      `### Critique assurance`, `### Backend`, and `### Checkpoint commits`
      resolutions (unchanged in form and position — they already behave as
-     bounded current state), plus one short paragraph naming the latest
-     completed round's outcome (replaced each round, never appended to).
+     bounded current state). It contains no latest-round marker or outcome;
+     Claude derives that from `#### Round log` when DEBATE or the anti-loop
+     cutoff needs it, and dispatched actors never receive it as current state.
    - `#### Round log` — append-only, chronological: one bounded entry per
      completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch, and
      REFACTOR round. Each entry: round id (matching the existing checkpoint
@@ -562,29 +563,41 @@ feature's section in `PROJECT_CONTEXT.md`:
      "Rejected alternative" passages above are today. This repo's own
      `backend-selection` section is grandfathered as-is (not retrofitted by
      this cycle); the split applies to features SPEC'd from this cycle
-     forward.
+     forward. Outcomes and decision notes never copy secrets, credentials, or
+     tokens verbatim; they reference the value's nature/location instead.
+     Node completion and log persistence are best-effort, not atomic or
+     idempotent: after interruption Claude re-derives a missing entry from
+     checkpoint commits and conversation evidence before proceeding, while a
+     duplicate or missing round id is a signal to stop and double-check state.
 
-2. **Node-specific default reads (the actual fix for the disclosure-rule
-   mismatch), replacing the single "the contract in `PROJECT_CONTEXT.md`"
-   phrasing in `SKILL.md`'s node 2/4/6 dispatch templates:**
+2. **Node-specific instruction-based disclosure (the mitigation for the
+   disclosure-rule mismatch), replacing the single "the contract in
+   `PROJECT_CONTEXT.md`" phrasing in `SKILL.md`'s node 2/4/6 dispatch
+   templates. This is not sandbox-enforced read confinement: Codex's sandbox
+   blocks CRITIQUE writes, not reads, and Claude `Explore` retains shell
+   access and can read or indirectly mutate other content. IMPL, CRITIQUE,
+   and REFACTOR prompts therefore inline the permitted `#### Current state`
+   text as a quoted block and instruct the actor not to open the context file
+   or read `#### Round log`:**
    - **SPEC**: reads and writes the full section (it authors/edits
      `#### Current state` and appends the round's entry to `#### Round
      log`).
-   - **IMPL**: reads `#### Current state` only.
+   - **IMPL**: receives quoted `#### Current state` inline.
    - **Ordinary resumed CRITIQUE** (`--resume-last`, standard mode or an
-     elevated-mode resumed canonical round): reads `#### Current state`;
+     elevated-mode resumed canonical round): receives quoted
+     `#### Current state` inline;
      relies on Codex's own session memory (`--resume-last`) for round
      continuity, not a re-read of `#### Round log`.
-   - **Elevated fresh lenses**: reads `#### Current state` only, explicitly
+   - **Elevated fresh lenses**: receives quoted `#### Current state`, explicitly
      excluding `#### Round log` — this is the literal fix for the leakage
      Codex's critique identified: shared "prior outcome" narrative
      correlates independent lenses' anchoring.
-   - **Exit challenger**: reads `#### Current state` (contract, current
+   - **Exit challenger**: receives quoted `#### Current state` (contract, current
      artifact, criteria) only, explicitly excluding `#### Round log` — this
      is what keeps it a cold review; it must never see the finding ledger or
      prior REFACTOR outcomes.
-   - **REFACTOR**: the triaged fix list inline (unchanged from today), plus
-     `#### Current state` for grounding — never `#### Round log`.
+   - **REFACTOR**: receives the triaged fix list plus quoted
+     `#### Current state` inline — never `#### Round log`.
    - **DEBATE/Claude's own triage** (not dispatched to a backend actor): may
      read `#### Round log` in full when needed — the anti-loop cutoff
      (`SKILL.md`) explicitly requires comparing consecutive CRITIQUE passes,
@@ -609,15 +622,28 @@ feature's section in `PROJECT_CONTEXT.md`:
      existing terminal-commit step under node 3's "Checkpoint commit on a
      passing gate" mechanics, using `Cycle-State: COMPLETE` (the value that
      step's own text already reserves for this moment) instead of
-     `CHECKPOINT`.
+     `CHECKPOINT`. Before either terminal edge declares DONE, `SKILL.md`
+     explicitly invokes this transition. Refactor-only skips archival when
+     its first CRITIQUE finds no valid findings and it reaches the final clean
+     pass with zero REFACTOR rounds; it commits the bounded final context
+     update and leaves a clean tree because there is no finished
+     implementation to move.
+   - **Slug/path safety**: derive `<feature-slug>` deterministically from the
+     feature heading using lowercase kebab-case matching `[a-z0-9-]+`. Reject
+     `/`, `..`, a leading `.`, an empty slug, any canonicalized path outside
+     the resolved archive directory/repository, a symlinked archive directory,
+     or a non-immediate-child target. PRE-FLIGHT recursively enumerates the
+     archive tree and treats any archive-relative subdirectory separator as
+     invalid.
    - **What moves**: the ENTIRE feature section — `#### Current state` and
      `#### Round log` — verbatim, losslessly. No summarization, no
      compaction. `PROJECT_CONTEXT.archive/<feature-slug>.md` is the full
      record; nothing is thrown away.
    - **What replaces it**: `PROJECT_CONTEXT.md`'s `## <feature-name>` heading
      is replaced with a one-line pointer: feature name, one-line outcome
-     summary, completion date, the archive file's relative path, and the
-     short hash of the **last checkpoint commit before this archival move**
+     summary, completion date, the archive file's relative path, the SHA-256
+     of the archived section, and the short hash of the **last checkpoint
+     commit before this archival move**
      (the commit that actually holds the feature's finished work). **Not**
      the archival commit's own hash — a commit's hash is computed from its
      tree, and that tree would contain the pointer that contains the hash,
@@ -634,13 +660,30 @@ feature's section in `PROJECT_CONTEXT.md`:
      never as separate commits, and never with one landed and the other
      pending. If checkpoint commits were not authorized for this cycle (node
      0), skip the archival move entirely and escalate to the user instead of
-     leaving an uncommitted archive write on disk.
+     leaving an uncommitted archive write on disk. Capture HEAD when the
+     sequence starts; immediately before `git commit`, re-verify the same HEAD
+     and a staged path set containing exactly `PROJECT_CONTEXT.md` plus the
+     intended archive file. Abort without committing and escalate on either
+     mismatch; do not retry blindly.
    - **Interruption/inconsistency handling**: a future cycle entering
      PRE-FLIGHT on this repo must check, for every feature heading in
-     `PROJECT_CONTEXT.md`, that a pointer's claimed archive file actually
-     exists, and that no `PROJECT_CONTEXT.archive/*.md` file exists without a
-     corresponding pointer. Either mismatch is a stop-and-escalate condition
-     at PRE-FLIGHT, not something to silently repair or guess about.
+     `PROJECT_CONTEXT.md`, that a pointer's claimed archive is a regular
+     non-symlink file resolving within the repository, exists, and matches the
+     pointer's SHA-256, and that no archive descendant exists without exactly
+     one valid pointer. Missing/hash-mismatched/orphan/nested/symlinked state
+     is a stop-and-escalate condition at PRE-FLIGHT, not something to silently
+     repair or guess about.
+
+4. **Operational preconditions and continuity limits.** At most one active
+   graph-engineer cycle may run per repository; concurrent cycles are
+   unsupported and can corrupt shared context/index/branch state. In
+   refactor-only, PRE-FLIGHT commits its own Quality gate/Backend/Critique
+   assurance scaffolding immediately before the first CRITIQUE so a no-op run
+   cannot leave it pending. Every resumed CRITIQUE, DEBATE reinjection, and
+   REFACTOR prompt names the active feature and stops if the resumed memory is
+   for another feature. This only mitigates the pinned plugin's recency-based
+   `--resume-last`: this cycle observed a resumed REFACTOR select an unrelated
+   cancelled session after cancellation apparently refreshed its recency.
 
 **Explicitly out of scope for this feature** (do not attempt in this cycle):
 lossy compaction or summarization of `#### Round log` content, at any point —
@@ -658,7 +701,8 @@ scoping; any change to `quality-gate-detection.md`'s resolution algorithm.
 keep the node body describing the invariant" precedent already used for
 `elevated-assurance.md` and `backend-selection.md`: add a new reference file
 `references/context-lifecycle.md` documenting the two-subheading split, the
-node-specific read rules, and the archival mechanics in full; `SKILL.md`'s
+node-specific disclosure rules, and the archival mechanics in full;
+`SKILL.md`'s
 node 1 (SPEC), node 2 (IMPL), node 4 (CRITIQUE — both standard and elevated
 paths), node 5 (DEBATE), node 6 (REFACTOR), and node 3's "Checkpoint commit
 on a passing gate" paragraph each get a short pointer to it rather than
@@ -672,10 +716,9 @@ than continuing to state `PROJECT_CONTEXT.md` is the *only* writable
 artifact — word it so the exception stays narrow (this path, this trigger,
 this atomicity requirement) rather than reading as a general loosening.
 `AGENTS.md`, if it restates the writable-artifact invariant, needs the same
-update.
-
-Latest completed round: `IMPL-r00` — the scoped context lifecycle, dispatch
-restrictions, and terminal archival protocol are implemented on disk.
+update. `goal-templates.md`'s write-authorized stop conditions require the
+terminal transition, the zero-REFACTOR no-op finalization where applicable,
+or its defined escalation before an autonomous goal can end.
 
 #### Round log
 

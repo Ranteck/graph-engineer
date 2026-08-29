@@ -238,7 +238,11 @@ writes are expected. It does not run QUALITY GATE before the first CRITIQUE:
 no IMPL or REFACTOR write has happened yet, so there is nothing new to gate.
 After the first REFACTOR write, every loop follows REFACTOR -> QUALITY GATE
 -> CRITIQUE -> DEBATE until no findings remain, then refactor-only terminates
-at DONE.
+at DONE. Before declaring DONE, execute the terminal archival transition per
+`references/context-lifecycle.md`. If the first CRITIQUE finds no valid
+findings and the final clean pass is reached with zero REFACTOR rounds, use
+that reference's explicit no-op exception: commit the bounded final context
+update, skip archival, and enter DONE with a clean tree.
 
 Treat QUALITY GATE as a numbered invariant checkpoint, not a new actor or a
 fixed independent pipeline stage. Attach it as a capped retry edge to the
@@ -271,7 +275,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    including Codex's `--write` calls on the default path, land on top of
    existing uncommitted work or directly on `main`. This is what makes
    the "always enter on a branch with a clean working tree" rule under Risks an
-   enforced check instead of a hope.
+   enforced check instead of a hope. This lifecycle also requires at most one
+   active graph-engineer cycle per repository; concurrent cycles are
+   unsupported because they can corrupt shared context, index, and branch
+   state. Check and honor the concurrency precondition in
+   `references/context-lifecycle.md` rather than attempting implicit locking.
 
    **Backend resolution.** Resolve the `backend:` directive once per cycle
    entry for every mode. The accepted values are `codex`, `claude`,
@@ -358,9 +366,18 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    code already on disk.
 
    Before making any context write, also run the two-way pointer/archive
-   consistency check in `references/context-lifecycle.md`. A missing claimed
-   archive, orphan archive, or duplicate pointer is a stop-and-escalate
-   condition, never an automatic repair.
+   consistency check in `references/context-lifecycle.md`, including its slug,
+   path containment, real-directory/no-symlink, regular-file, SHA-256, and
+   recursive orphan-enumeration requirements. Any mismatch is a
+   stop-and-escalate condition, never an automatic repair.
+
+   In refactor-only, immediately after PRE-FLIGHT has written all of its
+   feature-scoped Quality gate, Backend, Critique assurance, and lifecycle
+   scaffolding, commit that `PROJECT_CONTEXT.md` metadata as its own exact-path
+   local step before the first CRITIQUE. If the commit cannot be made safely,
+   stop before dispatch; never leave the scaffolding pending. Follow
+   `references/context-lifecycle.md` for the exact scope and zero-REFACTOR
+   completion handling.
 
    Between the successful cycle-entry clean check and IMPL starting, the only
    expected tree changes are this cycle's own namespaced QUALITY GATE,
@@ -412,18 +429,23 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    feature section. Keep its contract under `#### Current state`, rewrite that
    subsection in place, and append the completed SPEC revision under
    `#### Round log`. Follow `references/context-lifecycle.md` for the exact
-   section shape, round-entry fields, and grandfathering rule.
+   section shape, round-entry fields, grandfathering rule, and the
+   evidence-based recovery required because actor completion plus round-log
+   persistence is best-effort rather than atomic or idempotent.
 
 2. **IMPL** (selected backend writes; Codex by default) —
    ```
-   Agent(subagent_type: "codex:codex-rescue", prompt: "Implement [feature]
-   following only its #### Current state subsection in PROJECT_CONTEXT.md;
-   do not read #### Round log. --write")
+   Agent(subagent_type: "codex:codex-rescue", prompt: "Implement the active
+   feature [feature]. Permitted context, quoted verbatim from that feature's
+   #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. --write")
    ```
 
-   This current-state-only default applies to every selected writer backend;
-   see `references/context-lifecycle.md` for the disclosure matrix and round
-   recording rules.
+   Every selected writer backend receives that quoted text inline. This is an
+   instruction-based disclosure policy, not a sandboxed read boundary; see
+   `references/context-lifecycle.md` for the guarantee caveat, disclosure
+   matrix, and round-recording rules.
 
    **Backend dispatch.** The invocation above is the unchanged default
    `codex` path. For `claude`, `claude:<account-alias>`, or
@@ -540,17 +562,22 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    ```
    # First CRITIQUE of the cycle (fresh thread):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   the current implementation of [feature] against only its #### Current
-   state subsection in PROJECT_CONTEXT.md. Do not read #### Round log.
+   the current implementation of the active feature [feature]. Permitted
+   context, quoted verbatim from its #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log.
    Challenge the approach, design choices, and assumptions — don't just list
    defects. Read-only: do not fix anything, just report findings.")
 
    # Every subsequent CRITIQUE call in the same cycle:
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   the current implementation of [feature] against only its #### Current
-   state subsection in PROJECT_CONTEXT.md; do not read #### Round log,
-   considering the prior findings, triage decisions, and any VERIFY failure
-   supplied with this request.
+   the current implementation of the active feature [feature]. Permitted
+   context, quoted verbatim from its #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. Consider the prior
+   findings, triage decisions, and any VERIFY failure supplied with this
+   request. If your resumed session's own memory concerns a different feature
+   than [feature], stop and report that instead of proceeding.
    Continuity summary if the fresh REFACTOR fallback was used: [concise
    relevant prior findings, triage decisions, and constraints].
    Challenge the approach, design choices, and assumptions — don't just list
@@ -566,11 +593,13 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 
    # Refactor-only, first CRITIQUE (fresh thread, no SPEC contract exists):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   [scope] as it currently exists on disk, applying these user-supplied
-   criteria if any: [criteria]. PROJECT_CONTEXT.md's QUALITY GATE metadata is
-   not a functional contract for this feature — do not require or assume one
-   exists; judge the code against its own apparent intent and against the
-   criteria given. Challenge the approach, design choices, and assumptions —
+   [scope] for the active feature [feature] as it currently exists on disk.
+   Permitted context, quoted verbatim from its refactor-only #### Current
+   state scope/criteria:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. This metadata is not
+   a functional contract; judge the code against its apparent intent and the
+   quoted criteria. Challenge the approach, design choices, and assumptions —
    don't just list defects. Read-only: do not fix anything, just report
    findings.")
 
@@ -578,10 +607,14 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    # full 8-node write cycle — --resume-last, plus the fresh-fallback
    # continuity summary if node 6 had to use it):
    Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review
-   [scope] again now that the previously agreed fixes have been applied,
-   considering the prior findings and triage decisions. If this write-
-   authorized feature has a #### Current state subsection, use only that
-   subsection and do not read #### Round log.
+   [scope] for the active feature [feature] again now that the previously
+   agreed fixes have been applied. Permitted context, quoted verbatim from its
+   refactor-only #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. Consider the prior
+   findings and triage decisions. If your resumed session's own memory concerns
+   a different feature than [feature], stop and report that instead of
+   proceeding.
    Continuity summary if the fresh REFACTOR fallback was used: [concise
    relevant prior findings, triage decisions, and constraints].
    Challenge the approach, design choices, and assumptions — don't just list
@@ -590,10 +623,23 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    ```
    Return the findings verbatim first, without summarizing.
 
-   All standard fresh and resumed reviewer paths use this current-state-only
-   disclosure; resumed Codex continuity comes from `--resume-last`, not from
-   rereading the log. See `references/context-lifecycle.md` for the complete
-   node-specific read rules and completed-pass recording.
+   All standard fresh and resumed reviewer paths receive the permitted
+   `#### Current state` text inline. This narrows accidental disclosure but is
+   instruction-based, not a sandboxed read boundary; resumed Codex continuity
+   comes from `--resume-last`, not from rereading the log. See
+   `references/context-lifecycle.md` for the complete caveat, node-specific
+   rules, and completed-pass recording.
+
+   **Known `--resume-last` identity limitation.** The pinned plugin exposes no
+   resume-by-thread-ID; it selects by recency. Every resumed CRITIQUE,
+   DEBATE reinjection, and REFACTOR prompt must therefore name the active
+   feature and say: "if your resumed session's own memory concerns a different
+   feature than the one named here, stop and report that instead of
+   proceeding." This mitigates but cannot eliminate misrouting outside elevated
+   fan-in's no-intervening-task barrier. It has occurred in practice: during
+   the `project-context-scoped-disclosure` cycle, a `--resume-last --write`
+   REFACTOR resolved to an unrelated already-cancelled session, apparently
+   because cancellation refreshed that session's recency stamp.
 
    **Backend dispatch.** The invocations and `--resume-last` rules above are
    the unchanged default `codex` path. For `claude`,
@@ -642,10 +688,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    recorded in the prompt, the Claude turn, and the final report.
 
    Every elevated fresh lens and exit challenger reads `#### Current state`
-   only and explicitly excludes `#### Round log`; elevated resumed canonical
-   rounds use the same default and rely on session continuity. Follow the
-   disclosure rules in `references/context-lifecycle.md` in addition to the
-   elevated mechanics above.
+   supplied inline and is instructed to exclude `#### Round log`; elevated
+   resumed canonical rounds use the same prompt-level default and rely on
+   session continuity. This is not a sandbox-enforced read boundary. Follow
+   the disclosure rules in `references/context-lifecycle.md` in addition to
+   the elevated mechanics above.
 
    **On the default Codex path, read-only is enforced, not just requested.**
    CRITIQUE's read-only
@@ -665,6 +712,8 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
      `codex:codex-rescue` with `--resume-last` and never `--write`, so the
      reinjection stays on the same thread instead of becoming the "latest"
      session that a later REFACTOR's `--resume-last` might mistakenly resume.
+     Name the active feature and include the resumed-memory mismatch stop
+     instruction required in node 4.
      Non-Codex backends use the continuity mechanism in
      `references/backend-selection.md`. Await the reply before deciding.
    - **False positive** → discarded, with one line of written justification
@@ -729,14 +778,18 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 6. **REFACTOR** (selected backend fixes; Codex by default) —
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Apply the following
-   agreed fixes: [triaged list]. Ground the work in only the active feature's
-   #### Current state subsection in PROJECT_CONTEXT.md; do not read #### Round
-   log. --resume-last --write")
+   agreed fixes for the active feature [feature]: [triaged list]. Permitted
+   context, quoted verbatim from that feature's #### Current state:
+   > [quoted Current state text]
+   Do not open PROJECT_CONTEXT.md or read #### Round log. If your resumed
+   session's own memory concerns a different feature than [feature], stop and
+   report that instead of proceeding. --resume-last --write")
    ```
 
-   Every writer backend receives the triaged fix list inline plus
-   `#### Current state`, never `#### Round log`. Follow
-   `references/context-lifecycle.md` for disclosure and round recording.
+   Every writer backend receives the triaged fix list and quoted
+   `#### Current state` text inline, with an instruction not to read
+   `#### Round log`. That is a disclosure instruction, not read confinement.
+   Follow `references/context-lifecycle.md` for the caveat and round recording.
 
    **Backend dispatch.** The invocation and recovery protocol below are the
    unchanged default `codex` path. For `claude`,
@@ -819,6 +872,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    do not run the bundle as QUALITY GATE. Resolve an isolated fast mechanical
    subcommand or ask the user explicitly how to split it, so a functional test
    failure cannot enter the mechanical retry route.
+
+   If VERIFY passes, **before declaring DONE, execute the terminal archival
+   transition per `references/context-lifecycle.md`**. DONE is unavailable
+   until the atomic archive/pointer commit succeeds or that reference's
+   required stop-and-escalate path has been reported.
 
 ### Anti-loop cutoff
 

@@ -222,6 +222,15 @@ The node invariants in `../SKILL.md` remain authoritative. The dispatch rules
 below select the actor and continuity mechanism without changing the node's
 place in the graph.
 
+For every backend, `#### Current state` scoping is instruction-based, not a
+sandboxed read boundary. Inline the permitted subsection as a quoted block in
+each IMPL, CRITIQUE, and REFACTOR prompt and instruct the actor not to open
+`PROJECT_CONTEXT.md` or read `#### Round log`. Codex's CRITIQUE sandbox blocks
+writes, not reads; Claude `Explore` excludes direct editor tools but retains
+shell access, and cross-session dispatch cannot remove remote tools. Inline
+disclosure reduces accidental leakage but does not structurally prevent reads
+or indirect mutations.
+
 ### `codex` (default)
 
 Nodes 2, 4, and 6 behave exactly as documented in `../SKILL.md`:
@@ -232,6 +241,11 @@ Nodes 2, 4, and 6 behave exactly as documented in `../SKILL.md`:
   reviews resume as documented, including elevated-assurance exceptions.
 - REFACTOR uses `--resume-last --write`, including the existing snapshot and
   fresh-session recovery protocol if a read-only session cannot be upgraded.
+
+Every resumed Codex CRITIQUE, DEBATE reinjection, and REFACTOR prompt also
+names the active feature and carries the cross-feature-memory stop instruction
+defined in `../SKILL.md`. This mitigates the pinned plugin's recency-based
+`--resume-last` identity limitation; it does not create resume-by-thread-ID.
 
 Every Codex interaction still routes through the single
 `codex:codex-rescue` entry point. Backend selection does not alter Codex's
@@ -248,13 +262,14 @@ owner and DEBATE arbiter and never uses Edit/Write on implementation files.
 #### IMPL and REFACTOR: `general-purpose` writer
 
 Use `Agent(subagent_type: "general-purpose", ...)` for both writer nodes.
-For IMPL, provide only the active feature's `#### Current state` subsection
-from `PROJECT_CONTEXT.md`, never `#### Round log`, and instruct the agent to
-implement it directly with Edit/Write. For REFACTOR, provide the triaged valid
-findings, relevant constraints from `#### Current state`, and the continuity
-summary described below—again never the round log—and instruct the agent to
-apply those fixes directly with Edit/Write. Follow `context-lifecycle.md` for
-the disclosure matrix. Every writer return still routes through
+For IMPL, quote the active feature's `#### Current state` text inline, never
+include `#### Round log`, instruct the agent not to open the context file, and
+instruct it to implement directly with Edit/Write. For REFACTOR, provide the
+triaged valid findings, a quoted inline block of the relevant constraints from
+`#### Current state`, and the continuity summary described below—again never
+the round log—and instruct the agent to apply those fixes directly with
+Edit/Write. Follow `context-lifecycle.md` for the disclosure matrix and its
+non-enforcement caveat. Every writer return still routes through
 QUALITY GATE before CRITIQUE exactly as `../SKILL.md` requires.
 
 This preserves the core orchestration invariant: a dispatched writer — not
@@ -276,11 +291,12 @@ mandatory before/after artifact-identity comparison above detects drift; it
 does not make the call structurally read-only or comparable to Codex's
 OS/process sandbox.
 
-Every reviewer receives only the active feature's `#### Current state`
-subsection plus any required inline continuity summary; never disclose
-`#### Round log` to the dispatched reviewer. Elevated fresh lenses and the
-exit challenger remain cold under the stricter rules in
-`context-lifecycle.md`.
+Every reviewer prompt contains the active feature's `#### Current state` text
+inline as a quoted block plus any required continuity summary and instructs
+the actor not to open `PROJECT_CONTEXT.md` or read `#### Round log`. Elevated
+fresh lenses and the exit challenger use the same prompt-level cold-review
+mitigation under `context-lifecycle.md`; shell access means it is not enforced
+read confinement.
 
 Return the reviewer's findings verbatim before Claude performs the normal
 valid/debatable/false-positive triage. When elevated assurance is separately
@@ -350,13 +366,18 @@ completion. The skill has no built-in request-correlation ID, automated
 timeout, disconnect recovery, or retry mechanism, so this is a best-effort
 causal convention rather than a guarantee. If the target stops responding,
 stop and ask the user to help unblock the session instead of redispatching or
-guessing that the node completed.
+guessing that the node completed. Separately, persisting a completed node to
+`#### Round log` is also best-effort rather than atomic/idempotent; use the
+evidence-based interruption recovery in `context-lifecycle.md` before
+advancing after a resumed handoff.
 
-For IMPL and REFACTOR, send `#### Current state` or the triaged fixes plus its
-relevant constraints, never `#### Round log`, and authorize the target session
-to edit. For CRITIQUE, send `#### Current state`, prior findings and triage
-history inline, and an explicit adversarial, read-only
-instruction. Because the same target session retains its conversation, it
+For IMPL and REFACTOR, send the relevant `#### Current state` text inline as a
+quoted block, or the triaged fixes plus a quoted block of its relevant
+constraints; never send `#### Round log`, and instruct the target not to open
+the context file before authorizing it to edit. For CRITIQUE, send a quoted
+`#### Current state` block, prior findings and triage history inline, and an
+explicit adversarial, read-only instruction. Because the same target session
+retains its conversation, it
 already has continuity; still include the current triage decisions and
 constraints so the requested review state is explicit rather than inferred.
 Node 5 sends any debatable counterargument to this same resolved session and
@@ -409,7 +430,8 @@ Reuse the existing `claude:<account-alias>` subsection's IMPL/REFACTOR
 dispatch mechanics: use `SendMessage` to the same resolved, confirmed session;
 name the feature, node, and expected response; await a reply that clearly
 answers that dispatch; and apply the same best-effort causal, reachability,
-and workspace-identity limitations stated there. Unlike
+workspace-identity, inline quoted-context, and prompt-only disclosure
+limitations stated there. Unlike
 `claude:<account-alias>`, this writer never saw CRITIQUE or node 5
 reinjections. Every REFACTOR dispatch must therefore include, alongside the
 triaged fix list, the same manually maintained continuity summary kept for the
