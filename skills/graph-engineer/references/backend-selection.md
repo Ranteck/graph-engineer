@@ -242,10 +242,16 @@ sandboxed read boundary. In each IMPL, CRITIQUE, and REFACTOR prompt, inline
 the permitted subsection using `context-lifecycle.md`'s exact-sentinel
 validation, forbidden-heading check, byte-exact extraction, and dynamic
 outer-fence serialization. Run that validation immediately before every
-dispatch. If a resolved pre-lifecycle feature section lacks the sentinels,
-complete that reference's one-time additive grandfathered-section upgrade at
-SPEC, or at refactor-only PRE-FLIGHT, before validating or dispatching. Never
-use a blockquote or hand-copied paraphrase. Backtick and tilde
+dispatch. The closed grandfathered feature-name list contains exactly
+`backend-selection`. If that section lacks the sentinels, SPEC or refactor-only
+PRE-FLIGHT must first check its existing `### Feature contract` body for a line
+matching `^[ ]{0,3}#{2,4}([ \t]|$)`. Only when no line matches may it complete
+the reference's one-time additive upgrade; if a line matches, stop and escalate
+without attempting the upgrade. A sentinel-less section whose name is not on
+the closed list is an ordinary missing-sentinel validation failure, not an
+upgrade candidate: stop and escalate. After a successful upgrade, run the
+ordinary sentinel validation before dispatching. Never use a blockquote or
+hand-copied paraphrase. Backtick and tilde
 runs inside the payload are uninterpreted bytes. Instruct the actor not to open
 `PROJECT_CONTEXT.md` or read `#### Round log`. Codex's CRITIQUE sandbox blocks
 writes, not reads; Claude `Explore` excludes direct editor tools but retains

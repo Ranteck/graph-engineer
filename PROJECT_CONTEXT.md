@@ -560,14 +560,19 @@ feature's section in `PROJECT_CONTEXT.md`:
      section-creation write with the contract—the earliest context write that
      is actually possible. This timing clarification adds no heading-count or
      cardinality enforcement.
-   - A grandfathered pre-lifecycle section that lacks `#### Current state` and
-     `#### Round log` is structurally upgraded once, before the first future
-     write-authorized IMPL, CRITIQUE, REFACTOR, or DEBATE for that feature. Its
-     existing `### Feature contract` body becomes initial Current state
-     byte-for-byte and an empty Round log is appended. Full-cycle SPEC or
-     refactor-only PRE-FLIGHT performs and validates the additive envelope
-     change; existing content is not rewritten and prior history is not
-     reconstructed.
+   - The closed grandfathered feature-name list contains exactly
+     `backend-selection`, the only section that predates this lifecycle. If that
+     section lacks `#### Current state` and `#### Round log`, full-cycle SPEC or
+     refactor-only PRE-FLIGHT first checks its existing `### Feature contract`
+     body for a line matching the forbidden-heading pattern
+     `^[ ]{0,3}#{2,4}([ \t]|$)`. Only when no line matches does it perform the
+     one-time additive upgrade: the body becomes initial Current state
+     byte-for-byte and an empty Round log is appended, then the ordinary
+     sentinel validation runs. If a line matches, stop and escalate without
+     attempting the upgrade or rewriting the body. A sentinel-less section
+     whose feature name is not on that closed list is an ordinary
+     missing-sentinel validation failure: it is not eligible for upgrade, so
+     stop and escalate. Prior history is never reconstructed.
    - `#### Current state` — bounded and rewritten in place: the current
      contract or refactor-only scope/criteria. It contains no latest-round
      marker, rejected alternative, past actor refusal, prior-review conclusion,
@@ -942,3 +947,26 @@ corresponding escalation.
   line) is what makes the byte-for-byte preservation claim honest — a legacy
   body with a real subheading stops and escalates rather than being silently
   mangled or having its heading rewritten.
+
+##### REFACTOR-r10
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found this feature's own `#### Current state` (and its
+  local summaries in SKILL.md/backend-selection.md) was never updated for
+  r09's pre-upgrade compatibility limitation, so a cold exit challenger would
+  see a superseded description; also found "grandfathered" identity had no
+  fail-closed, reproducible definition — nothing distinguished a genuine
+  pre-lifecycle section from a malformed modern one lacking sentinels.
+- **DEBATE classifications**: Both findings valid.
+- **Resulting writer work**: Updated Current state, SKILL.md, and
+  backend-selection.md to state the compatibility branch locally rather than
+  only linking out; defined the grandfathered set as a closed, explicit list
+  (`backend-selection`, the only section predating this lifecycle) — a
+  sentinel-less section whose name is not on that list is an ordinary
+  missing-sentinel validation failure, never an upgrade candidate.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Grandfathering is closed and enumerable, not an open
+  heuristic, because every feature created under this lifecycle from now on
+  is authored with both sentinels from the start — there is no legitimate way
+  for a future non-grandfathered section to lack them.

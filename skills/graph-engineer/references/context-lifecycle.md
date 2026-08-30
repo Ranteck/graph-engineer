@@ -176,17 +176,32 @@ it must not pretend that a new functional contract was authored. The first
 completed CRITIQUE starts a composite record only when it leads to a REFACTOR
 checkpoint or closes as a CRITIQUE-only no-op pass.
 
-Existing feature sections created before this lifecycle are grandfathered
-only until a future write-authorized cycle first resolves that feature for a
-node that requires lifecycle disclosure: IMPL, CRITIQUE, REFACTOR, or DEBATE.
-Before the first such node, attempt a one-time additive structural upgrade.
-This is not a universal migration for every possible legacy contract: it is
-safe only when the existing `### Feature contract` body contains no line
-matching the forbidden-heading pattern `^[ ]{0,3}#{2,4}([ \t]|$)`. If any line
-matches—even when it is a legitimate legacy subheading—stop and escalate
-without attempting the upgrade or rewriting that heading. There is no safe
-automatic way to preserve such a body byte-for-byte while also reconciling its
-subheading with the sentinel-based extraction contract.
+Grandfathering is an explicit identity check, not an inference from missing
+sentinels or section shape. The closed grandfathered feature-name list contains
+exactly:
+
+- `backend-selection`
+
+This is the only feature section that existed before this lifecycle shipped.
+The grandfathered-upgrade path applies only when the resolved feature name is
+on that list. A sentinel-less section whose feature name is not on the list is
+not eligible for upgrade; it is an ordinary missing-sentinel validation failure,
+so stop and escalate under the sentinel-validation rule below. Every feature
+section created from this lifecycle onward starts with both sentinels—authored
+by SPEC in a full cycle or by PRE-FLIGHT in refactor-only—so there is no
+legitimate sentinel-less modern section.
+
+The listed legacy section is grandfathered only until a future write-authorized
+cycle first resolves it for a node that requires lifecycle disclosure: IMPL,
+CRITIQUE, REFACTOR, or DEBATE. Before the first such node, run a pre-upgrade
+compatibility check. The one-time additive upgrade is not a universal migration
+for every possible legacy contract: it is safe only when the existing `###
+Feature contract` body contains no line matching the forbidden-heading pattern
+`^[ ]{0,3}#{2,4}([ \t]|$)`. If any line matches—even when it is a legitimate
+legacy subheading—stop and escalate without attempting the upgrade or rewriting
+that heading. There is no safe automatic way to preserve such a body
+byte-for-byte while also reconciling its subheading with the sentinel-based
+extraction contract.
 
 When that pre-upgrade compatibility check passes, the existing body of `###
 Feature contract` becomes the initial `#### Current state` byte-for-byte—do not
@@ -236,9 +251,12 @@ For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
 the active feature's `#### Current state` text by this exact rule:
 
 First resolve the active feature heading by exact match to
-`## <feature-name>`. If the resolved section is grandfathered and lacks the
-sentinels, complete the one-time write-authorized structural upgrade above
-before applying this extraction rule or dispatching an actor.
+`## <feature-name>`. If that exact feature name is on the closed grandfathered
+list and its section lacks the sentinels, run the compatibility check and, only
+if it passes, complete the one-time write-authorized structural upgrade above
+before applying this extraction rule or dispatching an actor. If the resolved
+feature name is not on the list, missing sentinels are an ordinary validation
+failure: stop and escalate rather than attempting an upgrade.
 
 1. Within that resolved active `## <feature-name>` section, require
    exactly one canonical sentinel line whose bytes are `#### Current state`

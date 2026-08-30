@@ -451,14 +451,20 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    **Bounded current state and history.** Read and write the full active
    feature section. Keep its contract under `#### Current state`, rewrite that
    subsection in place, and immediately run the lifecycle reference's sentinel
-   count/order and forbidden-heading validation after every such write. If the
-   resolved section is a grandfathered pre-lifecycle section without the two
-   sentinels, first perform `references/context-lifecycle.md`'s one-time
-   additive structural upgrade, preserving its existing Feature-contract body
-   byte-for-byte. SPEC does not append its own round-log entry; its contract
-   work is summarized in the initial `IMPL-r00` composite. Follow the lifecycle
-   reference for the exact section shape, composite fields, checkpoint locator,
-   and interruption handling.
+   count/order and forbidden-heading validation after every such write. The
+   closed grandfathered feature-name list contains exactly `backend-selection`.
+   If that section lacks the two sentinels, first check its existing `###
+   Feature contract` body for a line matching the forbidden-heading pattern
+   `^[ ]{0,3}#{2,4}([ \t]|$)`. Only when no line matches may SPEC perform
+   `references/context-lifecycle.md`'s one-time additive structural upgrade,
+   preserving that body byte-for-byte; if a line matches, stop and escalate
+   without attempting the upgrade. A sentinel-less section whose name is not
+   on the closed list is an ordinary missing-sentinel validation failure, not
+   an upgrade candidate: stop and escalate. After a successful upgrade, run
+   the ordinary sentinel validation before dispatch. SPEC does not append its
+   own round-log entry; its contract work is summarized in the initial
+   `IMPL-r00` composite. Follow the lifecycle reference for the exact section
+   shape, composite fields, checkpoint locator, and interruption handling.
 
 2. **IMPL** (selected backend writes; Codex by default) —
    ```
