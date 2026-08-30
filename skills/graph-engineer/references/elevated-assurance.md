@@ -160,55 +160,65 @@ GATE before CRITIQUE resumes (see the amendment in
 
 ## The three lenses
 
-Each lens receives the same feature's `#### Current state` text inline as a
-quoted block, the same frozen artifact identity, and the same read-only
-instruction. It is instructed not to open `PROJECT_CONTEXT.md` or read
-`#### Round log`; follow `context-lifecycle.md`. This is a prompt-level
-disclosure rule, not a sandboxed read boundary: Codex's read-only sandbox
-blocks writes, not reads. The lens does **not**
-receive the builder's (IMPL's) narrative, and it does not see another lens's
-output. Each
-lens may report a concrete defect outside its assigned angle — the angle is a
+Each lens receives the same feature's `#### Current state` raw bytes inline in
+the unambiguous outer fence defined by `context-lifecycle.md`, the same frozen
+artifact identity, and the same read-only instruction. It is instructed not to
+open `PROJECT_CONTEXT.md` or read `#### Round log`. The lifecycle reference's
+byte-exact extraction, fence-aware boundary scan, and dynamic outer-fence rule
+are mandatory; do not substitute a blockquote or hand-copied text. This is a
+prompt-level disclosure rule, not a sandboxed read boundary: Codex's read-only
+sandbox blocks writes, not reads. The lens does **not** receive the builder's
+(IMPL's) narrative, and it does not see another lens's output. Each lens may
+report a concrete defect outside its assigned angle — the angle is a
 minimum responsibility, not a blindfold.
 
 **Artifact identity.** `git rev-parse HEAD` plus `git status
 --porcelain=v1 -uall` alone do **not** identify content: editing the bytes of
 an already-modified tracked file, or of an already-untracked file, leaves
 both unchanged (` M path` and `?? path` don't move), and neither one covers
-tracked-file *content* at all. The identity is one deterministic digest: a
-SHA-256 over the fixed-order concatenation of `git rev-parse HEAD`, the raw
-`git status --porcelain=v1 -uall` output, `git diff HEAD --binary`, and a
-NUL-delimited SHA-256 content-hash manifest of initially-untracked paths
-built with the exact hashing protocol in `quality-gate-detection.md`'s
-"Execute without hidden side effects" section, steps 3-4 (same hashing
-rules — symlink/non-regular escalation, the 500-file/50-MiB limits — reused
-here, not a separate weaker implementation). `Artifact identity: [digest]`
-everywhere below refers to this one value; SHA-256 is collision-resistant,
-not collision-proof, but sufficient for detecting accidental drift, which is
-this protocol's actual purpose.
+tracked-file *content* at all. `Artifact identity: [digest]` everywhere below
+means the lowercase SHA-256 emitted by this exact, literal recipe, run from the
+repository root:
 
-**Every time this digest is needed, compute it fresh by re-reading git state
-and re-hashing current untracked-file bytes at that moment — never treat an
-earlier computation, including QUALITY GATE's own snapshot, as reusable
-without recomputing it.** The one narrow exception: if QUALITY GATE just
-passed with `mode: check-only` (not `skipped`), its own after-execution
-snapshot (`quality-gate-detection.md` step 7) was itself a fresh read of
-current state — use it as the baseline the very first time it's needed,
-immediately after, without a redundant extra read. `mode: skipped` produces
-no snapshot at all (see `quality-gate-detection.md`'s no-op short-circuit)
-and must never be treated as a baseline source — for a skipped gate, and for
-every other capture point, compute the digest fresh from disk:
+```sh
+bash -o pipefail -c 'tmp=$(mktemp /tmp/graph-engineer-artifact-identity.XXXXXX) || exit; trap "rm -f -- \"\$tmp\"" EXIT; git ls-files --others --exclude-standard -z | LC_ALL=C sort -z >"$tmp" || exit; { git rev-parse HEAD || exit; printf "\0"; git status --porcelain=v1 -uall || exit; printf "\0"; git diff HEAD --binary || exit; printf "\0"; count=0; total=0; while IFS= read -r -d "" path; do [[ -f "$path" && ! -L "$path" ]] || { printf "artifact identity: untracked path is not a regular non-symlink file: %q\n" "$path" >&2; exit 1; }; ((count += 1)); ((count <= 500)) || { printf "artifact identity: more than 500 untracked files\n" >&2; exit 1; }; size=$(stat -c %s -- "$path") || exit; ((total += size)); ((total <= 52428800)) || { printf "artifact identity: untracked files exceed 50 MiB\n" >&2; exit 1; }; digest=$(sha256sum --zero -- "$path" | head -c 64) || exit; [[ ${#digest} -eq 64 ]] || { printf "artifact identity: failed to hash %q\n" "$path" >&2; exit 1; }; printf "%s\0%s\0" "$path" "$digest"; done <"$tmp"; } | sha256sum | cut -d " " -f1'
+```
 
-- **Full 8-node write cycle with a `mode: check-only` gate that just
-  passed:** use its fresh after-execution snapshot as the baseline for the
-  lens dispatch.
-- **Full 8-node write cycle with `mode: skipped`, and refactor-only's initial
-  sweep** (no preceding QUALITY GATE run — see `../SKILL.md`'s refactor-only
-  entry path): compute the digest fresh, specifically for this purpose,
-  immediately before dispatching the lenses.
-- **Refactor-only after its first REFACTOR:** same rule as the full 8-node
-  write cycle — use QUALITY GATE's fresh after-execution snapshot if `mode:
-  check-only` just passed; compute fresh if `mode: skipped`.
+The byte stream is, in order: raw `git rev-parse HEAD` output, NUL; raw `git
+status --porcelain=v1 -uall` output, NUL; raw `git diff HEAD --binary` output,
+NUL; then, for every initially-untracked regular non-symlink file sorted by raw
+path bytes, `<path>\0<sha256-of-file-content>\0`. The recipe deliberately
+reuses `quality-gate-detection.md`'s 500-file/50-MiB limits and fails closed on
+non-regular paths or command errors. Do not reimplement its delimiters, newline
+handling, sorting, or digest extraction. SHA-256 is collision-resistant, not
+collision-proof, but sufficient for detecting the accidental drift this
+protocol targets. Accept the printed digest only when the one-liner exits zero
+and stdout is exactly one 64-character lowercase hexadecimal value plus its
+line ending; discard any stdout from a nonzero run.
+
+Digest values already recorded in the `project-context-scoped-disclosure`
+cycle before this recipe was pinned used an ad hoc encoding and are not
+directly comparable to values from this recipe. That does not retroactively
+invalidate that cycle's existing clean-tree/no-drift conclusions: those checks
+relied on the three lenses' cheap independent recomputations agreeing on clean
+state. All captures and comparisons after adoption of this rule must use the
+literal recipe above on both sides.
+
+**Every time this digest is needed, compute it fresh with the literal recipe
+above by re-reading git state and re-hashing current untracked-file bytes at
+that moment.** Never substitute an earlier computation or QUALITY GATE's
+component snapshot: that snapshot can prove the gate caused no drift, but it
+is not encoded as this canonical aggregate digest. `mode: skipped` produces
+no snapshot at all. The capture points are:
+
+- **Full 8-node write cycle, whether QUALITY GATE used `mode: check-only` or
+  `mode: skipped`:** compute the digest fresh immediately before lens
+  dispatch. A just-passed check-only snapshot does not replace this capture.
+- **Refactor-only's initial sweep** (no preceding QUALITY GATE run — see
+  `../SKILL.md`'s refactor-only entry path): compute the digest fresh,
+  specifically for this purpose, immediately before dispatching the lenses.
+- **Refactor-only after its first REFACTOR:** compute the digest fresh after
+  the QUALITY GATE edge, whether that gate was check-only or skipped.
 - **Review-only** (never runs QUALITY GATE at all): compute the digest fresh
   immediately before dispatching the lenses.
 - **Every exit-challenger call, including reruns:** compute the digest fresh
@@ -269,8 +279,8 @@ Each lens call:
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Adversarially review the
 current implementation of the active feature [feature]. Permitted context,
-quoted verbatim from its #### Current state:
-> [quoted Current state text]
+extracted and fenced byte-for-byte per context-lifecycle.md:
+[raw Current state bytes extracted and fenced per context-lifecycle.md]
 Do not open PROJECT_CONTEXT.md or read #### Round log. Focus on [lens angle],
 but report any other severe defect you notice too. Challenge
 the approach, design choices, and assumptions — don't just list defects.
@@ -329,8 +339,9 @@ background context.
    ```
    Agent(subagent_type: "codex:codex-rescue", prompt: "Three independent
    read-only reviews of the active feature [feature] were just completed.
-   Permitted feature context, quoted verbatim from its #### Current state:
-   > [quoted Current state text]
+   Permitted feature context, extracted and fenced byte-for-byte per
+   context-lifecycle.md:
+   [raw Current state bytes extracted and fenced per context-lifecycle.md]
    Do not open PROJECT_CONTEXT.md or read #### Round log. Raw reports below,
    followed by Claude's normalization of them
    into one finding per underlying claim. Challenge the normalization
@@ -415,11 +426,12 @@ write cycle, or **DONE** in refactor-only, which has no VERIFY node. Runs after
 DEBATE first reaches "no valid findings remain."
 
 - Must be fresh and read-only; confirm no other Codex task is active first.
-- Give it the active feature's `#### Current state` text inline as a quoted
-  block (or, in refactor-only, the quoted requested scope and criteria), the
-  current final artifact, and any user-supplied criteria. Instruct it not to
-  open `PROJECT_CONTEXT.md`; do **not** provide the prior finding ledger. Its
-  value is a cold, holistic read of the result, not a continuation of the
+- Give it the active feature's `#### Current state` raw bytes inline using the
+  exact extraction and outer-fence serialization in `context-lifecycle.md`
+  (or, in refactor-only, the requested scope and criteria serialized the same
+  way), the current final artifact, and any user-supplied criteria. Instruct it
+  not to open `PROJECT_CONTEXT.md`; do **not** provide the prior finding ledger.
+  Its value is a cold, holistic read of the result, not a continuation of the
   prior triage.
 - When it completes, it **intentionally** becomes the new latest/canonical
   thread — this is expected, not a bug.
@@ -446,10 +458,11 @@ DEBATE first reaches "no valid findings remain."
 
 ```
 Agent(subagent_type: "codex:codex-rescue", prompt: "Review the current final
-implementation of the active feature [feature]. Permitted context, quoted
-verbatim from its #### Current state (in refactor-only, quote the requested
-scope/criteria instead):
-> [quoted Current state or refactor-only scope/criteria]
+implementation of the active feature [feature]. Permitted context, extracted
+and fenced byte-for-byte per context-lifecycle.md from its #### Current state
+(in refactor-only, serialize the requested scope/criteria the same way):
+[raw Current state bytes or refactor-only scope/criteria, fenced per
+context-lifecycle.md]
 Do not open PROJECT_CONTEXT.md or read #### Round log. Apply these criteria if
 any: [criteria]. You
 have no prior review history for this — treat this as a first, cold look at

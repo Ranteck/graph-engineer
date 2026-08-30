@@ -198,11 +198,12 @@ dispatch under `backend: claude:<account-alias>` —
 capture and compare the artifact-identity digest defined in
 `elevated-assurance.md`. The check is mode-independent: it applies to standard
 and elevated CRITIQUE alike, although PRE-FLIGHT's current compatibility rule
-rejects cross-session elevated mode before any such dispatch. The digest is a
-SHA-256 over the fixed-order
-concatenation of `git rev-parse HEAD`, raw
-`git status --porcelain=v1 -uall`, `git diff HEAD --binary`, and that
-reference's NUL-delimited content-hash manifest for initially-untracked paths.
+rejects cross-session elevated mode before any such dispatch. Use that
+reference's exact copy-pasteable shell recipe on both sides of every
+comparison; its NUL delimiters, raw-command output, path ordering, newline
+handling, and untracked-content hashing are part of the identity. A prose
+reimplementation or a QUALITY GATE component snapshot is not interchangeable
+with the canonical digest.
 
 For ordinary single-reviewer CRITIQUE calls — standard mode, reinjections, and
 the exit challenger — capture the digest immediately before dispatch,
@@ -223,8 +224,10 @@ below select the actor and continuity mechanism without changing the node's
 place in the graph.
 
 For every backend, `#### Current state` scoping is instruction-based, not a
-sandboxed read boundary. Inline the permitted subsection as a quoted block in
-each IMPL, CRITIQUE, and REFACTOR prompt and instruct the actor not to open
+sandboxed read boundary. In each IMPL, CRITIQUE, and REFACTOR prompt, inline
+the permitted subsection using `context-lifecycle.md`'s exact byte-range,
+fence-aware extraction and dynamic outer-fence serialization; never use a
+blockquote or hand-copied paraphrase. Instruct the actor not to open
 `PROJECT_CONTEXT.md` or read `#### Round log`. Codex's CRITIQUE sandbox blocks
 writes, not reads; Claude `Explore` excludes direct editor tools but retains
 shell access, and cross-session dispatch cannot remove remote tools. Inline
@@ -262,15 +265,15 @@ owner and DEBATE arbiter and never uses Edit/Write on implementation files.
 #### IMPL and REFACTOR: `general-purpose` writer
 
 Use `Agent(subagent_type: "general-purpose", ...)` for both writer nodes.
-For IMPL, quote the active feature's `#### Current state` text inline, never
-include `#### Round log`, instruct the agent not to open the context file, and
-instruct it to implement directly with Edit/Write. For REFACTOR, provide the
-triaged valid findings, a quoted inline block of the relevant constraints from
-`#### Current state`, and the continuity summary described below—again never
-the round log—and instruct the agent to apply those fixes directly with
-Edit/Write. Follow `context-lifecycle.md` for the disclosure matrix and its
-non-enforcement caveat. Every writer return still routes through
-QUALITY GATE before CRITIQUE exactly as `../SKILL.md` requires.
+For IMPL, inline the active feature's `#### Current state` bytes using the
+extraction and fenced serialization in `context-lifecycle.md`, never include
+`#### Round log`, instruct the agent not to open the context file, and instruct
+it to implement directly with Edit/Write. For REFACTOR, provide the triaged
+valid findings, the same fenced `#### Current state` bytes, and the continuity
+summary described below—again never the round log—and instruct the agent to
+apply those fixes directly with Edit/Write. Follow `context-lifecycle.md` for
+the disclosure matrix and its non-enforcement caveat. Every writer return still
+routes through QUALITY GATE before CRITIQUE exactly as `../SKILL.md` requires.
 
 This preserves the core orchestration invariant: a dispatched writer — not
 the orchestrating Claude — edits implementation files. It does not preserve
@@ -291,12 +294,12 @@ mandatory before/after artifact-identity comparison above detects drift; it
 does not make the call structurally read-only or comparable to Codex's
 OS/process sandbox.
 
-Every reviewer prompt contains the active feature's `#### Current state` text
-inline as a quoted block plus any required continuity summary and instructs
-the actor not to open `PROJECT_CONTEXT.md` or read `#### Round log`. Elevated
-fresh lenses and the exit challenger use the same prompt-level cold-review
-mitigation under `context-lifecycle.md`; shell access means it is not enforced
-read confinement.
+Every reviewer prompt contains the active feature's byte-exact `#### Current
+state` text inline in the outer fence required by `context-lifecycle.md`, plus
+any required continuity summary, and instructs the actor not to open
+`PROJECT_CONTEXT.md` or read `#### Round log`. Elevated fresh lenses and the
+exit challenger use the same prompt-level cold-review mitigation; shell access
+means it is not enforced read confinement.
 
 Return the reviewer's findings verbatim before Claude performs the normal
 valid/debatable/false-positive triage. When elevated assurance is separately
@@ -371,15 +374,16 @@ guessing that the node completed. Separately, persisting a completed node to
 evidence-based interruption recovery in `context-lifecycle.md` before
 advancing after a resumed handoff.
 
-For IMPL and REFACTOR, send the relevant `#### Current state` text inline as a
-quoted block, or the triaged fixes plus a quoted block of its relevant
-constraints; never send `#### Round log`, and instruct the target not to open
-the context file before authorizing it to edit. For CRITIQUE, send a quoted
-`#### Current state` block, prior findings and triage history inline, and an
-explicit adversarial, read-only instruction. Because the same target session
-retains its conversation, it
-already has continuity; still include the current triage decisions and
-constraints so the requested review state is explicit rather than inferred.
+For IMPL and REFACTOR, send the relevant `#### Current state` raw bytes inline
+using `context-lifecycle.md`'s exact extraction and outer-fence serialization,
+or the triaged fixes plus that same fenced current state; never send `####
+Round log`, and instruct the target not to open the context file before
+authorizing it to edit. For CRITIQUE, send the same fenced `#### Current state`
+bytes, prior findings and triage history inline, and an explicit adversarial,
+read-only instruction. Because the same target session retains its
+conversation, it already has continuity; still include the current triage
+decisions and constraints so the requested review state is explicit rather
+than inferred.
 Node 5 sends any debatable counterargument to this same resolved session and
 awaits its answer before Claude decides the final verdict.
 
@@ -430,7 +434,7 @@ Reuse the existing `claude:<account-alias>` subsection's IMPL/REFACTOR
 dispatch mechanics: use `SendMessage` to the same resolved, confirmed session;
 name the feature, node, and expected response; await a reply that clearly
 answers that dispatch; and apply the same best-effort causal, reachability,
-workspace-identity, inline quoted-context, and prompt-only disclosure
+workspace-identity, inline fenced-context, and prompt-only disclosure
 limitations stated there. Unlike
 `claude:<account-alias>`, this writer never saw CRITIQUE or node 5
 reinjections. Every REFACTOR dispatch must therefore include, alongside the

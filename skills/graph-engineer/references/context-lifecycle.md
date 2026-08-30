@@ -58,10 +58,14 @@ level-three resolution blocks in their existing form and position, then splits
 The resolution blocks are conceptually part of current state even though
 their `###` heading level and position remain unchanged. `#### Current state`
 contains the feature contract as it stands now, not a sequence of revisions.
-Rewrite it in place when understanding changes. It contains no latest-round
-marker or outcome summary: when the orchestrating Claude needs the latest
-completed round for DEBATE or the anti-loop cutoff, it reads the last
-`#### Round log` entry directly. Dispatched actors never need that marker.
+Rewrite it in place when understanding changes. State only the present contract
+and current resolutions: never narrate rejected alternatives, past actor
+refusals, or prior review conclusions there. Those are historical decision
+notes and belong in the applicable `#### Round log` entry. `#### Current state`
+also contains no latest-round marker or outcome summary: when the orchestrating
+Claude needs the latest completed round for DEBATE or the anti-loop cutoff, it
+reads the last `#### Round log` entry directly. Dispatched actors never need
+that marker.
 
 `#### Round log` is append-only and chronological. Append one bounded entry
 after each completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch,
@@ -119,14 +123,14 @@ detect some drift but do not turn this disclosure policy into confinement.
 | Node or reader | Default feature context | `#### Round log` access |
 |---|---|---|
 | SPEC | Full feature section; authors/rewrites `#### Current state` and appends its completed revision | Full read/write |
-| IMPL | Quoted `#### Current state` block | Prompt omits it and instructs no log read |
-| First standard fresh CRITIQUE | Quoted `#### Current state` block | Prompt omits it and instructs no log read |
-| Ordinary resumed CRITIQUE, including an elevated resumed canonical round | Quoted `#### Current state` block plus the review session's own `--resume-last` memory | Prompt omits it; continuity comes from the session |
-| Elevated fresh lenses | Quoted `#### Current state` block | Prompt explicitly omits it to reduce prior finding/outcome anchoring |
-| Elevated canonicalization | Quoted `#### Current state`, the three raw lens reports, and the normalized ledger | Prompt omits it; its job is to audit fan-in, not consume prior round history |
-| Exit challenger, including reruns | Quoted `#### Current state`: current contract/scope, artifact, and criteria | Prompt explicitly omits it to preserve a cold-review default |
+| IMPL | Byte-exact, dynamically fenced `#### Current state` block | Prompt omits it and instructs no log read |
+| First standard fresh CRITIQUE | Byte-exact, dynamically fenced `#### Current state` block | Prompt omits it and instructs no log read |
+| Ordinary resumed CRITIQUE, including an elevated resumed canonical round | Byte-exact, dynamically fenced `#### Current state` block plus the review session's own `--resume-last` memory | Prompt omits it; continuity comes from the session |
+| Elevated fresh lenses | Byte-exact, dynamically fenced `#### Current state` block | Prompt explicitly omits it to reduce prior finding/outcome anchoring |
+| Elevated canonicalization | Byte-exact, dynamically fenced `#### Current state`, the three raw lens reports, and the normalized ledger | Prompt omits it; its job is to audit fan-in, not consume prior round history |
+| Exit challenger, including reruns | Byte-exact, dynamically fenced `#### Current state`: current contract/scope, artifact, and criteria | Prompt explicitly omits it to preserve a cold-review default |
 | DEBATE / orchestrating Claude triage | Current state and the specific implementation evidence needed to rule on findings | May read the full log when needed, including to compare consecutive CRITIQUE passes for the anti-loop cutoff |
-| REFACTOR | Triaged fix list plus quoted `#### Current state` block | Prompt explicitly omits it |
+| REFACTOR | Triaged fix list plus byte-exact, dynamically fenced `#### Current state` block | Prompt explicitly omits it |
 | Human or future-cycle investigator | The round ids needed to answer the historical question | Reads the log directly by round id |
 
 The feature contract explicitly names ordinary resumed CRITIQUE but does not
@@ -136,14 +140,42 @@ instruction the actor can violate, not a capability boundary. Review-only and
 refactor-only's first CRITIQUE continue to judge the requested scope directly
 when no functional contract exists.
 
-For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract the active
-feature's `#### Current state` text and include it inline in the prompt as a
-quoted block. The prompt must name the active feature, identify that quoted
-block as the permitted context, and instruct the actor not to open or read
-`#### Round log`; do not merely tell the actor to read a subsection from
-`PROJECT_CONTEXT.md`. This reduces accidental discovery but does not enforce a
-read boundary. On the default Codex path, resumed review relies on
-`--resume-last`; do not reconstruct continuity by disclosing the round log.
+For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
+the active feature's `#### Current state` text by this exact rule:
+
+1. Locate the active feature's `#### Current state` ATX heading line. Extract
+   the raw bytes after that heading line's line ending through the byte
+   immediately before the next ATX heading line of level 4 or shallower
+   (`####`, `###`, or `##`), whichever occurs first in document order. A
+   candidate boundary has two through four leading `#` bytes followed by
+   whitespace or the line ending.
+2. While scanning for that boundary, track fenced code blocks. A line beginning
+   with a run of at least three backticks or at least three tildes opens a fence
+   when no fence is open. Only a line beginning with the same marker byte, with
+   a run at least as long as the opener and followed only by spaces or tabs,
+   closes it. Heading-like lines while a fence is open never delimit the
+   subsection.
+3. Preserve every extracted byte exactly, including leading/trailing blank
+   lines, internal Markdown, nested headings, and fences. Do not trim, indent,
+   prefix, normalize line endings, or otherwise rewrite it.
+4. Put those bytes inside a dedicated outer backtick-fenced code block in the
+   dispatch prompt. Choose an outer fence whose run is at least three
+   backticks and one byte longer than the longest run of backticks after zero
+   through three leading spaces on any extracted line; use the identical run
+   alone on the closing line.
+   This makes the wrapper unambiguous without altering an internal fence. The
+   extracted subsection in the active shape ends with the line ending before
+   `#### Round log`, so the closing fence follows that preserved line ending.
+
+The prompt must name the active feature, identify this fenced block as the
+permitted context, and instruct the actor not to open `PROJECT_CONTEXT.md` or
+read `#### Round log`; do not merely tell the actor to read a subsection from
+the file. Prompt templates use `[raw Current state bytes extracted and fenced
+per context-lifecycle.md]` as shorthand for this entire algorithm, never for a
+blockquote or hand-copied paraphrase. This reduces accidental discovery but
+does not enforce a read boundary. On the default Codex path, resumed review
+relies on `--resume-last`; do not reconstruct continuity by disclosing the
+round log.
 
 ## Terminal archival
 
@@ -155,15 +187,29 @@ been met:
 - after the final DONE-clearing CRITIQUE or exit-challenger pass in
   refactor-only.
 
-There is one refactor-only no-op exception: if the first CRITIQUE finds no
-valid findings and the final DONE-clearing pass is reached with **zero
-REFACTOR rounds** (after an exit challenger too, when elevated mode requires
-one), no finished implementation work exists to archive. Skip the archival
-transition and enter DONE after confirming the PRE-FLIGHT metadata commit
-described below exists. Append the completed CRITIQUE entry or entries under
-`#### Round log`, commit that bounded context-only completion update
-separately, and confirm the tree is clean; do not treat the absence of a
-finished-work checkpoint as an error in this exact zero-REFACTOR case.
+There is one refactor-only no-op exception. When the first CRITIQUE finds no
+valid findings, capture the canonical artifact-identity digest defined by the
+literal recipe in `elevated-assurance.md` immediately after accepting that
+result and completing any required post-review mutation check, but before
+appending that pass's round-log entry. Defer all CRITIQUE/exit-challenger log
+appends on this prospective no-op path until the identity comparison below; do
+not make another context write between capture and comparison. If the final
+DONE-clearing pass is then reached with **zero REFACTOR rounds** (after an exit
+challenger too, when elevated mode requires one), recompute the digest
+immediately before finalization and require exact equality with that captured
+value. A mismatch or an inability to construct or compare either digest means
+the artifact changed outside this cycle's tracked writer rounds: stop and
+escalate instead of taking the no-op path.
+
+Only after that equality check proves no drift does the absence of finished
+implementation work justify skipping archival. Confirm the PRE-FLIGHT metadata
+commit described below exists, append the completed CRITIQUE entry or entries
+under `#### Round log`, and make a separate bounded context-only completion
+commit. Stage exactly `PROJECT_CONTEXT.md` and verify the staged path set
+contains that one path and nothing else immediately before committing; any
+extra or missing staged path is a stop-and-escalate condition. Then confirm the
+tree is clean and enter DONE. Do not treat the absence of a finished-work
+checkpoint as an error in this exact identity-matched zero-REFACTOR case.
 
 The archive path is
 `PROJECT_CONTEXT.archive/<feature-slug>.md`, a sibling of
