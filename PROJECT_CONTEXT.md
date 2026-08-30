@@ -535,6 +535,18 @@ feature's section in `PROJECT_CONTEXT.md`:
 
 1. **Split every feature section into two named subheadings, enforced from
    SPEC onward:**
+   - Every lifecycle feature name must already match lowercase ASCII
+     `[a-z0-9-]+`; reject and escalate before writing any heading rather than
+     normalizing an invalid name. For a brand-new full-cycle feature, zero
+     exact headings is valid only at SPEC's initial authoring and means create
+     exactly one section. If `PROJECT_CONTEXT.md` is absent, SPEC creates the
+     file and section together; file creation is not a substitute for heading
+     creation. PRE-FLIGHT resolves metadata and defers its context write to
+     that SPEC bootstrap. In refactor-only, PRE-FLIGHT performs the analogous
+     initial scaffolding bootstrap because there is no SPEC. Immediately after
+     either bootstrap, and at every later resolution, exactly one exact
+     heading is mandatory; a missing file, zero matches, or multiple matches
+     stop and escalate before sentinel validation, extraction, or dispatch.
    - `#### Current state` — bounded and rewritten in place: the current
      contract or refactor-only scope/criteria. It contains no latest-round
      marker, rejected alternative, past actor refusal, prior-review conclusion,
@@ -555,7 +567,9 @@ feature's section in `PROJECT_CONTEXT.md`:
      the current branch's first-parent ancestry using the literal subject token
      `graph-engineer(<feature-name>):` plus exact full-message lines
      `Round: <round>` and `Cycle-State: CHECKPOINT`; zero or multiple matches
-     stop and escalate.
+     stop and escalate. The mandatory `[a-z0-9-]+` name grammar excludes the
+     subject token's parentheses/colon delimiters, so a feature name cannot
+     inject a forged token boundary.
      It does not rely on Git's formal trailer parser. `Checkpoint: none` means
      no checkpoint exists. No stored hash, placeholder, or later backfill is
      used. Design rationale and review history stay in `Decision notes`, and
@@ -568,9 +582,11 @@ feature's section in `PROJECT_CONTEXT.md`:
    prompts therefore inline the permitted `#### Current state` raw bytes in an
    unambiguous fenced block and instruct the actor not to open the context file
    or read `#### Round log`:
-   - Before any sentinel validation, extraction, or dispatch, the whole file
-     must contain exactly one exact `## <feature-name>` heading. Zero or
-     multiple matches stop and escalate.
+   - Outside the one SPEC/refactor-only PRE-FLIGHT bootstrap write described
+     above, before any sentinel validation, extraction, or dispatch, the whole
+     file must contain exactly one exact `## <feature-name>` heading. A missing
+     file, zero matches, or multiple matches stop and escalate. The bootstrap
+     must establish and immediately verify exact-one before any dispatch.
    - The active feature must contain exactly one canonical `#### Current state`
      sentinel line and exactly one later canonical `#### Round log` sentinel
      line. The orchestrator extracts strictly between those exact lines.
@@ -624,16 +640,20 @@ feature's section in `PROJECT_CONTEXT.md`:
      exactly `PROJECT_CONTEXT.md`, reject unstaged/untracked residue, and
      recheck HEAD. As the last check, require the staged path/diff inspection
      to contain only that active-feature record, then invoke `git commit`
-     immediately with no command in between. Any mismatch or command failure
-     stops and escalates. The reviewer artifact digest remains available to
-     elevated and non-Codex review paths but is not used for this gate.
-   - **Slug/path safety**: derive `<feature-slug>` deterministically from the
-     feature heading using lowercase kebab-case matching `[a-z0-9-]+`. Reject
-     `/`, `..`, a leading `.`, an empty slug, any canonicalized path outside
-     the resolved archive directory/repository, a symlinked archive directory,
-     or a non-immediate-child target. PRE-FLIGHT recursively enumerates the
-     archive tree and treats any archive-relative subdirectory separator as
-     invalid.
+     immediately with no command in between. The invocation is content-inert:
+     its only arguments may supply the prescribed message, with no
+     `-a`/`--all`, `--include`, `--only`, `--interactive`, `--patch`, or
+     pathspec arguments, so it records only the explicitly staged index. Any
+     mismatch or command failure stops and escalates. The reviewer artifact
+     digest remains available to elevated and non-Codex review paths but is
+     not used for this gate.
+   - **Slug/path safety**: because the feature name already matches lowercase
+     ASCII `[a-z0-9-]+`, `<feature-slug>` is exactly that name; do not normalize
+     it. Reject `/`, `..`, a leading `.`, an empty slug, any canonicalized path
+     outside the resolved archive directory/repository, a symlinked archive
+     directory, or a non-immediate-child target. PRE-FLIGHT recursively
+     enumerates the archive tree and treats any archive-relative subdirectory
+     separator as invalid.
    - **What moves**: the ENTIRE feature section — `#### Current state` and
      `#### Round log` — verbatim, losslessly. No summarization, no
      compaction. `PROJECT_CONTEXT.archive/<feature-slug>.md` is the full
@@ -659,8 +679,10 @@ feature's section in `PROJECT_CONTEXT.md`:
      as the last check, inspect the staged path set and diff for exactly
      `PROJECT_CONTEXT.md` plus the intended archive file and the byte-exact
      move/pointer contents, and invoke `git commit` immediately with no command
-     in between. Abort without committing and escalate on any mismatch; do not
-     retry blindly.
+     in between. Use a content-inert invocation whose only arguments supply the
+     prescribed message: no `-a`/`--all`, `--include`, `--only`,
+     `--interactive`, `--patch`, or pathspec arguments. Abort without
+     committing and escalate on any mismatch; do not retry blindly.
    - **Interruption/inconsistency handling**: a future cycle entering
      PRE-FLIGHT on this repo must check, for every feature heading in
      `PROJECT_CONTEXT.md`, that a pointer's claimed archive is a regular
@@ -676,7 +698,9 @@ feature's section in `PROJECT_CONTEXT.md`:
    particular, making staged-content inspection the last command immediately
    before each applicable commit narrows but does not eliminate the residual
    race window; this protocol has no lock or compare-and-swap binding the
-   inspected index to the commit. In refactor-only, PRE-FLIGHT commits its own
+   inspected index to the commit. Every applicable commit is content-inert and
+   records only the explicitly staged index; selection-changing flags and
+   pathspecs are forbidden. In refactor-only, PRE-FLIGHT commits its own
    Quality gate/Backend/Critique
    assurance scaffolding immediately before the first CRITIQUE so a no-op run
    cannot leave it pending. Every resumed CRITIQUE, DEBATE reinjection, and
@@ -708,8 +732,10 @@ and archival mechanics. `SKILL.md` links each affected node to it;
 `elevated-assurance.md` owns the canonical artifact-identity recipe;
 `backend-selection.md` reuses both contracts for every backend. The
 orchestrator's archive write remains limited to the terminal transition, and
-autonomous goal stop conditions require the terminal transition, the verified
-zero-REFACTOR no-op, or the corresponding escalation.
+all seven autonomous goal templates stop when exact-one feature-heading
+resolution fails outside the explicit bootstrap exception. Their completion
+conditions also require the terminal transition, the verified zero-REFACTOR
+no-op, or the corresponding escalation.
 
 #### Round log
 
@@ -809,3 +835,22 @@ zero-REFACTOR no-op, or the corresponding escalation.
 - **Checkpoint**: locate-by-feature-and-round
 - **Decision notes**: Inspection adjacency narrows but does not eliminate the
   residual race window; the one-active-cycle precondition remains mandatory.
+
+##### REFACTOR-r06
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found that exact-one heading resolution prevented new
+  feature creation, commit invocations could still expand the inspected index,
+  unconstrained feature names could inject the checkpoint subject delimiter,
+  and seven autonomous goal templates omitted the heading-resolution stop.
+- **DEBATE classifications**: All four findings valid.
+- **Resulting writer work**: Added the phase-limited SPEC/refactor-only
+  bootstrap, made file-versus-heading creation explicit, required
+  `[a-z0-9-]+` feature names, constrained every applicable commit to the
+  explicitly staged index, and extended all seven goal-template stop clauses.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: The zero-match exception ends immediately after the
+  initial section write; from then on, missing, zero, or duplicate resolution
+  is fail-closed. The feature-name grammar makes the delimited subject token
+  structurally non-injectable.
