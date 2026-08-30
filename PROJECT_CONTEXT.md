@@ -7,6 +7,14 @@ the feature currently in progress.
 
 ## backend-selection
 
+> **Historical-contract note (current authority).** This grandfathered
+> section's `### Feature contract` predates the persistence-ordering
+> clarification later specified in `skills/graph-engineer/SKILL.md`,
+> `skills/graph-engineer/references/context-lifecycle.md`, and
+> `skills/graph-engineer/references/backend-selection.md`. Its historical
+> contract body remains unchanged; those three files are authoritative for
+> current new-feature versus existing-feature persistence timing.
+
 ### Quality gate
 
 - **Resolution**: `mode: skipped`
@@ -909,3 +917,28 @@ corresponding escalation.
   behavior from the pre-r05 period (IMPL-r00 through REFACTOR-r04), not behavior
   that remained in effect through r05. The two restored fixes are independent
   of heading uniqueness.
+
+##### REFACTOR-r09
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found the seven `/goal` templates' sentinel-stop clause
+  could fire before a grandfathered section ever got the chance to upgrade;
+  `backend-selection`'s own live contract text still stated the superseded
+  absolute persistence-ordering wording; the upgrade's byte-for-byte claim
+  didn't account for a legacy body containing legitimate subheadings; and
+  README's worked-example intro had a stale "full template is in Usage"
+  cross-reference.
+- **DEBATE classifications**: All four findings valid.
+- **Resulting writer work**: Sequenced all seven goal templates as
+  recognize-grandfathered → attempt upgrade (pre-upgrade compatibility check
+  first) → validate → dispatch; added a historical-contract note atop
+  `backend-selection`'s section pointing to the authoritative current files
+  without altering its body; narrowed the upgrade's scope to bodies with no
+  forbidden-heading line, stopping and escalating otherwise; fixed README's
+  cross-reference.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: The pre-upgrade compatibility check (no forbidden-heading
+  line) is what makes the byte-for-byte preservation claim honest — a legacy
+  body with a real subheading stops and escalates rather than being silently
+  mangled or having its heading rewritten.

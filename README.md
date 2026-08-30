@@ -173,8 +173,9 @@ fan-out/join in the whole cycle appears only when
 This is an illustrative flow, not a transcript of an executed end-to-end run
 (see the Status note above). Loosely modeled on the single-message template
 — **shortened here for readability; don't copy this exact text, use the
-full template in [Usage](#usage) or
-[`goal-templates.md`](skills/graph-engineer/references/goal-templates.md),
+full template in
+[`goal-templates.md`](skills/graph-engineer/references/goal-templates.md), also
+linked from [Usage](#usage),
 which includes the CRITIQUE cap, anti-loop, QUALITY GATE, and environmental
 stop clauses this shortened version omits:**
 ```

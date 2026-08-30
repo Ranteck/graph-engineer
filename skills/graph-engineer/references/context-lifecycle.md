@@ -179,17 +179,26 @@ checkpoint or closes as a CRITIQUE-only no-op pass.
 Existing feature sections created before this lifecycle are grandfathered
 only until a future write-authorized cycle first resolves that feature for a
 node that requires lifecycle disclosure: IMPL, CRITIQUE, REFACTOR, or DEBATE.
-Before the first such node, perform a one-time additive structural upgrade. The
-existing body of `### Feature contract` becomes the initial `#### Current
-state` byte-for-byte—do not trim, reflow, summarize, or otherwise rewrite
-it—and append an empty `#### Round log`. Do not reconstruct prior rounds or
-invent historical records. In a full cycle, SPEC performs this upgrade as part
-of its context write before IMPL; in refactor-only, PRE-FLIGHT performs it as
-part of the metadata/scaffolding write before the initial CRITIQUE. Immediately
-run the ordinary sentinel count/order and forbidden-heading validation after
-the upgrade. This is an envelope migration, not a retrofit of contract content
-or a rewrite of history. Any activated feature must still pass the
-feature-name grammar before resolution.
+Before the first such node, attempt a one-time additive structural upgrade.
+This is not a universal migration for every possible legacy contract: it is
+safe only when the existing `### Feature contract` body contains no line
+matching the forbidden-heading pattern `^[ ]{0,3}#{2,4}([ \t]|$)`. If any line
+matches—even when it is a legitimate legacy subheading—stop and escalate
+without attempting the upgrade or rewriting that heading. There is no safe
+automatic way to preserve such a body byte-for-byte while also reconciling its
+subheading with the sentinel-based extraction contract.
+
+When that pre-upgrade compatibility check passes, the existing body of `###
+Feature contract` becomes the initial `#### Current state` byte-for-byte—do not
+trim, reflow, summarize, or otherwise rewrite it—and an empty `#### Round log`
+is appended. Do not reconstruct prior rounds or invent historical records. In
+a full cycle, SPEC performs this upgrade as part of its context write before
+IMPL; in refactor-only, PRE-FLIGHT performs it as part of the
+metadata/scaffolding write before the initial CRITIQUE. Immediately run the
+ordinary sentinel count/order and forbidden-heading validation after the
+upgrade. This is an envelope migration, not a retrofit of contract content or
+a rewrite of history. Any activated feature must still pass the feature-name
+grammar before resolution.
 
 ## Default disclosure by node
 
