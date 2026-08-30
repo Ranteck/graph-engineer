@@ -428,7 +428,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    write only the section matching the current feature, never edit or reason
    over another feature's section. This avoids one cycle's contract silently
    contaminating or being contaminated by an unrelated feature's contract
-   in the same file.
+   in the same file. Before resolving that section, require exactly one exact
+   `## <feature-name>` heading in the whole file. Zero or multiple exact
+   matches stop and escalate before sentinel validation, extraction, or
+   dispatch; follow `references/context-lifecycle.md`'s authoritative
+   heading-identity rule.
 
    **Bounded current state and history.** Read and write the full active
    feature section. Keep its contract under `#### Current state`, rewrite that
@@ -514,13 +518,18 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    treats both writer calls the same way. Claude does this itself with
    Bash/git rather than asking Codex, because REFACTOR does not yet know the
    gate's outcome when it runs, and pass/fail is Claude's own finding to act
-   on. Stage only the paths this cycle actually touched — inspect
-   `git status --porcelain=v1 -uall` and `git diff --cached` before
-   committing, never `git add -A`/`git add .` blind — and never push. Before
-   staging, append the one composite `IMPL-r00` or `REFACTOR-rNN` record
-   defined in `references/context-lifecycle.md`; stage it with the writer
-   changes in this same checkpoint commit. The staged-diff inspection must
-   confirm the expected writer paths and exactly that active-feature record.
+   on. Inspect `git status --porcelain=v1 -uall`, then stage only the paths
+   this cycle actually touched; never use `git add -A`/`git add .` blind, and
+   never push. Before staging, append the one composite `IMPL-r00` or
+   `REFACTOR-rNN` record defined in `references/context-lifecycle.md`; stage it
+   with the writer changes in this same checkpoint commit. Complete every
+   other check first. As the last check, inspect the staged path set and
+   `git diff --cached` and confirm the expected writer paths plus exactly that
+   active-feature record. If this inspection passes, invoke `git commit`
+   immediately as the next command, with no command in between. This ordering
+   narrows but does not eliminate the residual race window; it remains subject
+   to `references/context-lifecycle.md`'s one-active-cycle precondition and
+   absence of locking or compare-and-swap.
    The record uses `Checkpoint: locate-by-feature-and-round`; it never stores
    a guessed hash or a value that must be backfilled later. If checkpoints
    were not authorized, stop rather than claim a writer iteration was closed

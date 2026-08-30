@@ -552,9 +552,10 @@ feature's section in `PROJECT_CONTEXT.md`:
      CRITIQUE/DEBATE nodes do not get standalone entries.
      A checkpointed composite is written in the same commit as its writer
      changes. `Checkpoint: locate-by-feature-and-round` resolves uniquely from
-     the current branch's first-parent ancestry using the exact feature name in
-     the subject plus exact full-message lines `Round: <round>` and
-     `Cycle-State: CHECKPOINT`; zero or multiple matches stop and escalate.
+     the current branch's first-parent ancestry using the literal subject token
+     `graph-engineer(<feature-name>):` plus exact full-message lines
+     `Round: <round>` and `Cycle-State: CHECKPOINT`; zero or multiple matches
+     stop and escalate.
      It does not rely on Git's formal trailer parser. `Checkpoint: none` means
      no checkpoint exists. No stored hash, placeholder, or later backfill is
      used. Design rationale and review history stay in `Decision notes`, and
@@ -567,6 +568,9 @@ feature's section in `PROJECT_CONTEXT.md`:
    prompts therefore inline the permitted `#### Current state` raw bytes in an
    unambiguous fenced block and instruct the actor not to open the context file
    or read `#### Round log`:
+   - Before any sentinel validation, extraction, or dispatch, the whole file
+     must contain exactly one exact `## <feature-name>` heading. Zero or
+     multiple matches stop and escalate.
    - The active feature must contain exactly one canonical `#### Current state`
      sentinel line and exactly one later canonical `#### Round log` sentinel
      line. The orchestrator extracts strictly between those exact lines.
@@ -617,11 +621,12 @@ feature's section in `PROJECT_CONTEXT.md`:
      reasoning. At the final clean pass, with zero REFACTOR rounds, repeat
      HEAD/status/HEAD before any write and require both HEAD values to match the
      baseline. Only then append one deferred composite no-op record. Stage
-     exactly `PROJECT_CONTEXT.md`, require the staged diff to contain only that
-     active-feature record, reject unstaged/untracked residue, and recheck HEAD
-     immediately before commit. Any mismatch or command failure stops and
-     escalates. The reviewer artifact digest remains available to elevated and
-     non-Codex review paths but is not used for this gate.
+     exactly `PROJECT_CONTEXT.md`, reject unstaged/untracked residue, and
+     recheck HEAD. As the last check, require the staged path/diff inspection
+     to contain only that active-feature record, then invoke `git commit`
+     immediately with no command in between. Any mismatch or command failure
+     stops and escalates. The reviewer artifact digest remains available to
+     elevated and non-Codex review paths but is not used for this gate.
    - **Slug/path safety**: derive `<feature-slug>` deterministically from the
      feature heading using lowercase kebab-case matching `[a-z0-9-]+`. Reject
      `/`, `..`, a leading `.`, an empty slug, any canonicalized path outside
@@ -650,10 +655,12 @@ feature's section in `PROJECT_CONTEXT.md`:
      pending. If checkpoint commits were not authorized for this cycle (node
      0), skip the archival move entirely and escalate to the user instead of
      leaving an uncommitted archive write on disk. Capture HEAD when the
-     sequence starts; immediately before `git commit`, re-verify the same HEAD
-     and a staged path set containing exactly `PROJECT_CONTEXT.md` plus the
-     intended archive file. Abort without committing and escalate on either
-     mismatch; do not retry blindly.
+     sequence starts; after every other check, re-verify the same HEAD. Then,
+     as the last check, inspect the staged path set and diff for exactly
+     `PROJECT_CONTEXT.md` plus the intended archive file and the byte-exact
+     move/pointer contents, and invoke `git commit` immediately with no command
+     in between. Abort without committing and escalate on any mismatch; do not
+     retry blindly.
    - **Interruption/inconsistency handling**: a future cycle entering
      PRE-FLIGHT on this repo must check, for every feature heading in
      `PROJECT_CONTEXT.md`, that a pointer's claimed archive is a regular
@@ -666,7 +673,11 @@ feature's section in `PROJECT_CONTEXT.md`:
 4. **Operational preconditions, identity, and continuity limits.** At most one
    active graph-engineer cycle may run per repository; concurrent cycles are
    unsupported and can corrupt shared context/index/branch state. In
-   refactor-only, PRE-FLIGHT commits its own Quality gate/Backend/Critique
+   particular, making staged-content inspection the last command immediately
+   before each applicable commit narrows but does not eliminate the residual
+   race window; this protocol has no lock or compare-and-swap binding the
+   inspected index to the commit. In refactor-only, PRE-FLIGHT commits its own
+   Quality gate/Backend/Critique
    assurance scaffolding immediately before the first CRITIQUE so a no-op run
    cannot leave it pending. Every resumed CRITIQUE, DEBATE reinjection, and
    REFACTOR prompt names the active feature and stops if the resumed memory is
@@ -674,9 +685,11 @@ feature's section in `PROJECT_CONTEXT.md`:
    plugin's recency-based `--resume-last` limitation.
    `elevated-assurance.md` defines one canonical artifact digest as a literal
    shell recipe over NUL-delimited HEAD, porcelain status, binary diff, and
-   sorted untracked-file path/content hashes. Both sides of every comparison
-   must use that recipe. Its drift coverage is limited to Git-visible tracked
-   final working-tree content and coarse index/working-tree status plus
+   sorted untracked-file path/content hashes. Its plain `mktemp` call uses the
+   environment/system temporary-path resolution rather than a fixed `/tmp`
+   template. Both sides of every comparison must use that recipe. Its drift
+   coverage is limited to Git-visible tracked final working-tree content and
+   coarse index/working-tree status plus
    initially untracked, non-ignored regular files; it does not cover ignored
    files, submodule internals, or
    filesystem state outside Git's view, and it does not uniquely encode
@@ -718,7 +731,7 @@ zero-REFACTOR no-op, or the corresponding escalation.
   / `backend: codex`
 - **CRITIQUE outcome**: Found cold-review disclosure, terminal-edge, path,
   identity, continuity, and archival-integrity gaps in IMPL-r00.
-- **DEBATE classifications**: F1-F11 and F13 valid; F12 was a non-defect because
+- **DEBATE classifications**: F1-F11 and F13 valid; F12 false-positive because
   the accepted pointer stores the preceding checkpoint, not a self-hash.
 - **Resulting writer work**: Applied the first lifecycle, archival, disclosure,
   no-op, identity, and recovery corrections.
@@ -766,9 +779,10 @@ zero-REFACTOR no-op, or the corresponding escalation.
 - **CRITIQUE outcome**: Confirmed F3 and F5 remained partial, checkpoint
   backfill was not followed by its introducing round, and the digest did not
   uniquely encode partially staged index state; challenged all three designs.
-- **DEBATE classifications**: The corrected root simplifications were accepted:
-  exact sentinels, HEAD plus clean-tree for the no-op gate, immutable checkpoint
-  locators, and composite iteration records.
+- **DEBATE classifications**: F3, F5, checkpoint-backfill ordering, and
+  partial-index digest identity were valid under the corrected design; their
+  root simplifications were exact sentinels, HEAD plus clean-tree for the no-op
+  gate, immutable checkpoint locators, and composite iteration records.
 - **Resulting writer work**: Replaced the fence parser, no-op digest gate,
   mutable checkpoint hash, and per-node best-effort ledger with the simplified
   present contracts; terminal archival mechanics remain unchanged.
@@ -778,3 +792,20 @@ zero-REFACTOR no-op, or the corresponding escalation.
   generic autonomous goals stop on failure. This same checkpoint performs the
   one-time migration of pre-r04 per-node history into composites; future
   writer iterations may not defer their own record.
+
+##### REFACTOR-r05
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found feature-heading ambiguity, an overclaimed
+  inspect-then-commit binding, a substring-collision-prone checkpoint locator,
+  non-canonical migrated verdict vocabulary, and a fixed `/tmp` assumption in
+  the canonical digest recipe.
+- **DEBATE classifications**: All five findings valid.
+- **Resulting writer work**: Required one exact active-feature heading, made
+  staged-content inspection the last check adjacent to each applicable commit,
+  delimited checkpoint subjects, normalized the migrated verdicts, and made
+  temporary-file creation environment-aware.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Inspection adjacency narrows but does not eliminate the
+  residual race window; the one-active-cycle precondition remains mandatory.

@@ -201,9 +201,10 @@ and elevated CRITIQUE alike, although PRE-FLIGHT's current compatibility rule
 rejects cross-session elevated mode before any such dispatch. Use that
 reference's exact copy-pasteable shell recipe on both sides of every
 comparison; its NUL delimiters, raw-command output, path ordering, newline
-handling, and untracked-content hashing are part of the identity. A prose
-reimplementation or a QUALITY GATE component snapshot is not interchangeable
-with the canonical digest.
+handling, untracked-content hashing, and plain `mktemp` call without a
+hardcoded temporary-directory root are part of the identity. A prose
+reimplementation, a recipe that restores a fixed `/tmp` path, or a QUALITY
+GATE component snapshot is not interchangeable with the canonical digest.
 
 For ordinary single-reviewer CRITIQUE calls — standard mode, reinjections, and
 the exit challenger — capture the digest immediately before dispatch,

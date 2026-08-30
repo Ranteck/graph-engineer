@@ -12,12 +12,27 @@ and branch state and can corrupt the shared lifecycle record. Stop and
 coordinate externally rather than starting a second cycle; this document does
 not define locking or compare-and-swap recovery.
 
+That limitation also applies when binding a commit to inspected staged
+content. For every commit flow below that inspects staged paths or a staged
+diff, complete all other checks first, make that staged-content inspection the
+last check immediately adjacent to `git commit`, and run no command between
+the inspection and the commit invocation. This ordering narrows the residual
+inspect-then-commit race window; it does not eliminate it or make the sequence
+atomic. The one-active-cycle precondition remains mandatory.
+
 The purpose is to keep the current contract bounded while preserving a
 lossless decision history, and to disclose that history only to actors that
 need it. These rules do not authorize the orchestrating Claude to edit
 implementation files.
 
 ## Active feature-section shape
+
+Before resolving an active feature section, search all of
+`PROJECT_CONTEXT.md` and require exactly one heading whose complete line is
+exactly `## <feature-name>` (followed only by its line ending, or by EOF).
+Zero exact matches or more than one exact match is a stop-and-escalate
+condition. Do not continue to sentinel validation, section extraction, or any
+actor dispatch until this heading-identity check succeeds.
 
 Every feature section created from this lifecycle onward keeps the existing
 level-three resolution blocks in their existing form and position, then splits
@@ -106,9 +121,11 @@ future writer iteration to defer its own record.
 record. `Checkpoint: locate-by-feature-and-round` means the checkpoint is
 self-identifying and stores no hash in the record. Resolve it only from the
 current branch's first-parent ancestry, requiring exactly one commit whose
-subject contains the exact feature name and whose full commit message contains
-exactly one line equal to `Round: <record-heading round>` and exactly one line
-equal to `Cycle-State: CHECKPOINT`. These are stable checkpoint-label lines;
+subject contains the literal delimited token
+`graph-engineer(<feature-name>):` (including the parentheses and colon) and
+whose full commit message contains exactly one line equal to
+`Round: <record-heading round>` and exactly one line equal to
+`Cycle-State: CHECKPOINT`. These are stable checkpoint-label lines;
 do not rely on `git interpret-trailers`, because legacy multiline `Findings:`
 text means the existing messages are not necessarily parsed as formal Git
 trailers. Zero or more than one matching commit is ambiguous: stop and
@@ -137,8 +154,11 @@ need not be retrofitted merely because a later feature uses the new shape.
 ## Default disclosure by node
 
 These are instruction-based disclosure defaults. Resolve the active feature
-heading first and instruct each actor not to read or write another feature's
-section. They are **not sandbox-enforced read boundaries**: the default Codex
+heading first by requiring exactly one exact `## <feature-name>` heading in
+the whole file. Zero or multiple exact matches stop and escalate before any
+sentinel validation, extraction, or dispatch. Then instruct each actor not to
+read or write another feature's section. They are **not sandbox-enforced read
+boundaries**: the default Codex
 sandbox blocks writes during CRITIQUE, not reads, and Claude `Explore`
 reviewers retain shell access despite lacking direct editor tools. A
 dispatched actor can still read other content or, on a non-Codex route,
@@ -168,12 +188,16 @@ when no functional contract exists.
 For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
 the active feature's `#### Current state` text by this exact rule:
 
-1. Within the resolved active `## <feature-name>` section, require exactly one
-   canonical sentinel line whose bytes are `#### Current state` followed only
-   by its line ending, and exactly one later canonical sentinel line whose
-   bytes are `#### Round log` followed only by its line ending (or EOF after
-   the text). Missing, duplicate, reordered, indented, or suffixed sentinels
-   are invalid; stop and escalate rather than infer a boundary.
+First apply the file-wide exact-heading uniqueness check above. Do not start
+the following sentinel algorithm unless it resolves exactly one active
+section; zero or multiple exact feature-heading matches stop and escalate.
+
+1. Within that uniquely resolved active `## <feature-name>` section, require
+   exactly one canonical sentinel line whose bytes are `#### Current state`
+   followed only by its line ending, and exactly one later canonical sentinel
+   line whose bytes are `#### Round log` followed only by its line ending (or
+   EOF after the text). Missing, duplicate, reordered, indented, or suffixed
+   sentinels are invalid; stop and escalate rather than infer a boundary.
 2. Validate every intervening line. After zero through three ASCII space bytes,
    no line may contain two, three, or four `#` bytes followed by a space, tab,
    or line ending: equivalently, reject `^[ ]{0,3}#{2,4}([ \t]|$)`. Backtick
@@ -241,15 +265,16 @@ There is one refactor-only no-op exception, with this strict order:
    and append one composite `CRITIQUE-rNN-noop` record covering all deferred
    CRITIQUE outcomes and DEBATE classifications in their actual chronology.
    Its writer-work field is `none` and its checkpoint field is `none`.
-5. Stage exactly `PROJECT_CONTEXT.md`; inspect the staged path set with a
-   NUL-safe command and require exactly that path, then inspect the staged diff
-   and require that its only semantic change is the expected composite record
-   under the active feature. Also require no unstaged tracked change and no
-   untracked residue.
-   Immediately before committing, re-read HEAD and require it still equals the
-   baseline. Any extra or missing staged path, unrelated context change,
-   residue, command failure, or HEAD mismatch aborts without committing and
-   escalates.
+5. Stage exactly `PROJECT_CONTEXT.md`. Require no unstaged tracked change and
+   no untracked residue, then re-read HEAD and require it still equals the
+   baseline. Any residue, command failure, or HEAD mismatch aborts without
+   committing and escalates.
+6. As the last check, inspect the staged path set with a NUL-safe command and
+   require exactly `PROJECT_CONTEXT.md`, then inspect the staged diff and
+   require that its only semantic change is the expected composite record
+   under the active feature. If either staged-content check fails, abort and
+   escalate. If both pass, invoke `git commit` immediately as the next command,
+   with no command between this final inspection and the commit.
 
 After that commit, confirm the tree is clean and enter DONE. Do not treat the
 absence of a finished-work checkpoint as an error in this exact HEAD-stable,
@@ -277,7 +302,8 @@ exists, stop and escalate rather than overwrite or merge it.
 
 ### Lossless move and pointer
 
-Move the entire active `## <feature-name>` section, from its heading through
+Using the uniquely resolved exact heading required above, move the entire
+active `## <feature-name>` section, from its heading through
 the line before the next level-two heading (or end of file), verbatim into the
 archive file. This includes all resolution metadata, `#### Current state`, and
 `#### Round log`. Do not summarize, compact, reorder, or discard any content.
@@ -318,20 +344,23 @@ When authorized:
 2. Prepare the verbatim archive and the one-line replacement pointer. Stage
    exactly `PROJECT_CONTEXT.md` and the matching archive file together; never
    stage unrelated paths.
-3. Inspect the staged diff and verify that the archived section is byte-for-
-   byte identical to the section removed from `PROJECT_CONTEXT.md`, and that
-   the pointer names the same feature, archive path, completion date, outcome,
-   archive SHA-256, and finished-work checkpoint.
-4. Immediately before `git commit`, re-run `git rev-parse HEAD` and require it
-   to equal the starting HEAD. Also inspect the staged name set with a NUL-safe
-   command and require it to contain exactly the two intended paths:
-   `PROJECT_CONTEXT.md` and the validated archive file. If either identity
-   check fails, abort without committing and escalate; do not retry blindly.
-5. Create one terminal commit containing both file changes. Never commit one
-   side separately or leave one side for a later commit. Use the existing
-   checkpoint message mechanics, but set `Cycle-State: COMPLETE` and include
-   the feature name in the subject so the archival commit is discoverable via
-   `git log --grep`.
+3. Complete every other pre-commit validation, then re-run
+   `git rev-parse HEAD` and require it to equal the starting HEAD. If this
+   identity check fails, abort without committing and escalate; do not retry
+   blindly.
+4. As the last check, inspect the staged name set with a NUL-safe command and
+   require it to contain exactly `PROJECT_CONTEXT.md` and the validated archive
+   file. In the same final staged-content inspection, inspect the staged diff
+   and verify that the archived section is byte-for-byte identical to the
+   section removed from `PROJECT_CONTEXT.md`, and that the pointer names the
+   same feature, archive path, completion date, outcome, archive SHA-256, and
+   finished-work checkpoint. If any check fails, abort and escalate.
+5. If that final inspection passes, invoke `git commit` immediately as the next
+   command, with no command in between. Create one terminal commit containing
+   both file changes; never commit one side separately or leave one side for a
+   later commit. Use the existing checkpoint message mechanics, but set
+   `Cycle-State: COMPLETE` and include the feature name in the subject so the
+   archival commit is discoverable via `git log --grep`.
 
 Git updates the branch tip atomically at commit time. An interruption before
 that commit may still leave uncommitted filesystem changes; do not silently

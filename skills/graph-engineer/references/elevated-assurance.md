@@ -183,8 +183,12 @@ means the lowercase SHA-256 emitted by this exact, literal recipe, run from the
 repository root:
 
 ```sh
-bash -o pipefail -c 'tmp=$(mktemp /tmp/graph-engineer-artifact-identity.XXXXXX) || exit; trap "rm -f -- \"\$tmp\"" EXIT; git ls-files --others --exclude-standard -z | LC_ALL=C sort -z >"$tmp" || exit; { git rev-parse HEAD || exit; printf "\0"; git status --porcelain=v1 -uall || exit; printf "\0"; git diff HEAD --binary || exit; printf "\0"; count=0; total=0; while IFS= read -r -d "" path; do [[ -f "$path" && ! -L "$path" ]] || { printf "artifact identity: untracked path is not a regular non-symlink file: %q\n" "$path" >&2; exit 1; }; ((count += 1)); ((count <= 500)) || { printf "artifact identity: more than 500 untracked files\n" >&2; exit 1; }; size=$(stat -c %s -- "$path") || exit; ((total += size)); ((total <= 52428800)) || { printf "artifact identity: untracked files exceed 50 MiB\n" >&2; exit 1; }; digest=$(sha256sum --zero -- "$path" | head -c 64) || exit; [[ ${#digest} -eq 64 ]] || { printf "artifact identity: failed to hash %q\n" "$path" >&2; exit 1; }; printf "%s\0%s\0" "$path" "$digest"; done <"$tmp"; } | sha256sum | cut -d " " -f1'
+bash -o pipefail -c 'tmp=$(mktemp) || exit; trap "rm -f -- \"\$tmp\"" EXIT; git ls-files --others --exclude-standard -z | LC_ALL=C sort -z >"$tmp" || exit; { git rev-parse HEAD || exit; printf "\0"; git status --porcelain=v1 -uall || exit; printf "\0"; git diff HEAD --binary || exit; printf "\0"; count=0; total=0; while IFS= read -r -d "" path; do [[ -f "$path" && ! -L "$path" ]] || { printf "artifact identity: untracked path is not a regular non-symlink file: %q\n" "$path" >&2; exit 1; }; ((count += 1)); ((count <= 500)) || { printf "artifact identity: more than 500 untracked files\n" >&2; exit 1; }; size=$(stat -c %s -- "$path") || exit; ((total += size)); ((total <= 52428800)) || { printf "artifact identity: untracked files exceed 50 MiB\n" >&2; exit 1; }; digest=$(sha256sum --zero -- "$path" | head -c 64) || exit; [[ ${#digest} -eq 64 ]] || { printf "artifact identity: failed to hash %q\n" "$path" >&2; exit 1; }; printf "%s\0%s\0" "$path" "$digest"; done <"$tmp"; } | sha256sum | cut -d " " -f1'
 ```
+
+The plain `mktemp` call intentionally has no hardcoded temporary-directory
+template, so it honors the environment/system temporary-path resolution.
+Failure to create that file remains fail-closed.
 
 The byte stream is, in order: raw `git rev-parse HEAD` output, NUL; raw `git
 status --porcelain=v1 -uall` output, NUL; raw `git diff HEAD --binary` output,
