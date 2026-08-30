@@ -58,10 +58,13 @@ default via `codex:codex-rescue --write`, unless the user opts into a Claude
 backend for that cycle. `PROJECT_CONTEXT.md` in the *consuming* repo is the
 orchestrating Claude's only ordinary writable file-content artifact while the
 cycle is active:
-PRE-FLIGHT writes the `### Quality gate` and `### Backend` resolution metadata
-there, SPEC writes the feature contract there, and (in write-authorized modes)
-PRE-FLIGHT/SPEC also finalize the `### Critique assurance` resolution there
-before IMPL — see `references/elevated-assurance.md` and
+for an existing feature section, PRE-FLIGHT writes the `### Quality gate` and
+`### Backend` resolution metadata there before SPEC. For a brand-new full-cycle
+feature, PRE-FLIGHT resolves those values and gives required user-facing
+disclosures, then SPEC's initial section-creation write persists them with the
+feature contract. In write-authorized modes PRE-FLIGHT/SPEC also finalize the
+`### Critique assurance` resolution before IMPL — see
+`references/elevated-assurance.md` and
 `references/backend-selection.md`. All four are namespaced per feature under
 the applicable `## <feature-name>` heading, and `### Critique assurance` is a
 finalized resolution, not a runtime progress log — don't have any node write

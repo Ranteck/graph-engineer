@@ -494,8 +494,8 @@ something this cycle attempts to solve).
 - **exit challenger**: required-before-verify-or-done-rerun-until-clean
 - **CRITIQUE pass cap**: 5 (template default)
 - **Codex review/debate call budget**: 13 (template default)
-- **Resolved by**: PRE-FLIGHT (initial), to be re-evaluated at end of SPEC
-  per `elevated-assurance.md`'s decision timing.
+- **Resolved by**: PRE-FLIGHT initial evaluation, confirmed unchanged at end
+  of SPEC; this is the final settled elevated resolution for the cycle.
 
 ### Backend
 
@@ -545,6 +545,21 @@ feature's section in `PROJECT_CONTEXT.md`:
      Claude, not untrusted input. Heading uniqueness is not mechanically
      counted or verified; duplicate or archived-name collisions are a
      documented, accepted risk.
+   - PRE-FLIGHT resolves Quality gate and Backend for every write-authorized
+     full cycle and gives any mandatory non-Codex disclosure to the user before
+     SPEC. If the feature section already exists, PRE-FLIGHT persists those
+     values before SPEC. If it does not, SPEC persists them in its initial
+     section-creation write with the contract—the earliest context write that
+     is actually possible. This timing clarification adds no heading-count or
+     cardinality enforcement.
+   - A grandfathered pre-lifecycle section that lacks `#### Current state` and
+     `#### Round log` is structurally upgraded once, before the first future
+     write-authorized IMPL, CRITIQUE, REFACTOR, or DEBATE for that feature. Its
+     existing `### Feature contract` body becomes initial Current state
+     byte-for-byte and an empty Round log is appended. Full-cycle SPEC or
+     refactor-only PRE-FLIGHT performs and validates the additive envelope
+     change; existing content is not rewritten and prior history is not
+     reconstructed.
    - `#### Current state` — bounded and rewritten in place: the current
      contract or refactor-only scope/criteria. It contains no latest-round
      marker, rejected alternative, past actor refusal, prior-review conclusion,
@@ -716,14 +731,16 @@ feature's section in `PROJECT_CONTEXT.md`:
    and porcelain status are otherwise identical.
 
 **Explicitly out of scope for this feature**: lossy compaction or summarization
-of `#### Round log`; one-live-file-per-active-feature layout; retrofitting
-grandfathered feature sections; changing the fixed 3-lens set, the
+of `#### Round log`; one-live-file-per-active-feature layout; rewriting a
+grandfathered section's contract content or reconstructing its history beyond
+the one-time additive envelope upgrade; changing the fixed 3-lens set, the
 exit-challenger fan-in barrier, or elevated-assurance mechanics unrelated to
 disclosure/identity; and changing `quality-gate-detection.md`'s resolver.
 
 **Consistency requirement.** `context-lifecycle.md` is authoritative for the
-two-subheading shape, byte-exact prompt disclosure, round history, no-op rule,
-and archival mechanics. `SKILL.md` links each affected node to it;
+two-subheading shape, one-time grandfathered-section envelope upgrade,
+byte-exact prompt disclosure, round history, no-op rule, and archival mechanics.
+`SKILL.md` links each affected node to it;
 `elevated-assurance.md` owns the canonical artifact-identity recipe;
 `backend-selection.md` reuses both contracts for every backend. The
 orchestrator's archive write remains limited to the terminal transition. The
@@ -869,3 +886,26 @@ corresponding escalation.
   not untrusted input. This repository has had two feature identities and no
   observed name collision; the theoretical completeness gap is deliberately
   not enforced mechanically.
+
+##### REFACTOR-r08
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Confirmed r07 removed the intended heading-cardinality
+  mechanism but also removed two independent fixes: earliest-possible
+  new-feature metadata persistence and one-time grandfathered-section
+  structural upgrade. Also found README/governing timing drift, provisional
+  assurance metadata, and inaccurate r07 provenance.
+- **DEBATE classifications**: All five findings valid.
+- **Resulting writer work**: Restored the additive legacy-section envelope
+  upgrade, clarified conversation disclosure versus earliest possible
+  persistence, synchronized README/CLAUDE/AGENTS, finalized Critique-assurance
+  metadata, and recorded the provenance correction without restoring heading
+  counts or a bootstrap exception.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Historical correction: exact-one/zero-or-multiple heading
+  enforcement was introduced by REFACTOR-r05; REFACTOR-r06 added its
+  phase-limited creation exception on top. R08 restores simple exact-match
+  behavior from the pre-r05 period (IMPL-r00 through REFACTOR-r04), not behavior
+  that remained in effect through r05. The two restored fixes are independent
+  of heading uniqueness.

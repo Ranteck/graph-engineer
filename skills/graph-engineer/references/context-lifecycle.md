@@ -48,13 +48,19 @@ heading.
 Resolve the active feature section by exact match to a complete
 `## <feature-name>` heading line. In a full 8-node cycle, SPEC creates
 `PROJECT_CONTEXT.md` if it is missing and creates the named section for a new
-feature. In refactor-only, which has no SPEC node, PRE-FLIGHT creates the named
-section with its lifecycle scaffolding. Heading resolution performs no
-file-wide cardinality check.
+feature. PRE-FLIGHT still resolves Quality gate and Backend and gives every
+required user-facing disclosure before SPEC. When the named section already
+exists, PRE-FLIGHT persists those resolutions there before SPEC. When it does
+not, SPEC's section-creation write is the earliest possible context write and
+persists the resolved values with the new contract. In refactor-only, which
+has no SPEC node, PRE-FLIGHT creates the named section with its lifecycle
+scaffolding. This sequencing performs no file-wide heading-count or
+cardinality check.
 
-Every feature section created from this lifecycle onward keeps the existing
-level-three resolution blocks in their existing form and position, then splits
-`### Feature contract` into exactly two level-four subheadings:
+Every feature section created or structurally upgraded under this lifecycle
+keeps the existing level-three resolution blocks in their existing form and
+position, then splits `### Feature contract` into exactly two level-four
+subheadings:
 
 ```markdown
 ## <feature-name>
@@ -170,10 +176,20 @@ it must not pretend that a new functional contract was authored. The first
 completed CRITIQUE starts a composite record only when it leads to a REFACTOR
 checkpoint or closes as a CRITIQUE-only no-op pass.
 
-Existing feature sections created before this lifecycle are grandfathered and
-need not be retrofitted merely because a later feature uses the new shape.
-Any feature activated under this lifecycle must still pass the feature-name
-grammar before resolution.
+Existing feature sections created before this lifecycle are grandfathered
+only until a future write-authorized cycle first resolves that feature for a
+node that requires lifecycle disclosure: IMPL, CRITIQUE, REFACTOR, or DEBATE.
+Before the first such node, perform a one-time additive structural upgrade. The
+existing body of `### Feature contract` becomes the initial `#### Current
+state` byte-for-byte—do not trim, reflow, summarize, or otherwise rewrite
+it—and append an empty `#### Round log`. Do not reconstruct prior rounds or
+invent historical records. In a full cycle, SPEC performs this upgrade as part
+of its context write before IMPL; in refactor-only, PRE-FLIGHT performs it as
+part of the metadata/scaffolding write before the initial CRITIQUE. Immediately
+run the ordinary sentinel count/order and forbidden-heading validation after
+the upgrade. This is an envelope migration, not a retrofit of contract content
+or a rewrite of history. Any activated feature must still pass the
+feature-name grammar before resolution.
 
 ## Default disclosure by node
 
@@ -211,7 +227,9 @@ For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
 the active feature's `#### Current state` text by this exact rule:
 
 First resolve the active feature heading by exact match to
-`## <feature-name>`.
+`## <feature-name>`. If the resolved section is grandfathered and lacks the
+sentinels, complete the one-time write-authorized structural upgrade above
+before applying this extraction rule or dispatching an actor.
 
 1. Within that resolved active `## <feature-name>` section, require
    exactly one canonical sentinel line whose bytes are `#### Current state`
@@ -442,6 +460,8 @@ visible instead of silently lossy.
 ## Deliberate exclusions
 
 This lifecycle does not authorize lossy round-log compaction, split active
-features into separate primary files, retrofit grandfathered sections, alter
-the elevated-assurance lens/fan-in mechanics, or change quality-gate
-resolution. It changes context shape, disclosure, and terminal archival only.
+features into separate primary files, rewrite a grandfathered section's
+contract content or reconstruct its history beyond the one-time additive
+envelope upgrade above, alter the elevated-assurance lens/fan-in mechanics, or
+change quality-gate resolution. It changes context shape, disclosure, and
+terminal archival only.

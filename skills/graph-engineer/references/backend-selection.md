@@ -109,9 +109,13 @@ critique-assurance, and checkpoint-commit policy:
    `backend: claude`; the writer's location is irrelevant to lens freshness.
 7. Persist the final resolution under `### Backend` inside the current
    feature's `PROJECT_CONTEXT.md` section before IMPL (or before the initial
-   CRITIQUE in refactor-only). Review-only does not write
-   `PROJECT_CONTEXT.md`; record its backend resolution in the user's prompt,
-   the Claude turn, and the final report instead.
+   CRITIQUE in refactor-only). If the feature section already exists,
+   PRE-FLIGHT persists it before SPEC. For a new full-cycle feature with no
+   section yet, SPEC persists PRE-FLIGHT's resolved value in its initial
+   section-creation write with the contract—the earliest context write that is
+   actually possible. Review-only does not write `PROJECT_CONTEXT.md`; record
+   its backend resolution in the user's prompt, the Claude turn, and the final
+   report instead.
 
 Use this persisted shape:
 
@@ -130,8 +134,10 @@ it after each node, and do not record transient `SendMessage` status there.
 
 When the resolved backend is anything other than `codex`, PRE-FLIGHT must say
 the following to the user once, before SPEC (or before the first dispatched
-node in a mode without SPEC), and persist the same disclosure under
-`### Backend` in write-authorized modes:
+node in a mode without SPEC). Persist the same disclosure under `### Backend`
+using step 7's timing: before SPEC for an existing section, during SPEC's
+initial section-creation write for a new full-cycle feature, or before the
+first dispatched node in a write-authorized mode without SPEC:
 
 > This cycle will use the same underlying Claude model for both writer and
 > reviewer roles, so the “different model in the decision path” mitigation
@@ -236,7 +242,10 @@ sandboxed read boundary. In each IMPL, CRITIQUE, and REFACTOR prompt, inline
 the permitted subsection using `context-lifecycle.md`'s exact-sentinel
 validation, forbidden-heading check, byte-exact extraction, and dynamic
 outer-fence serialization. Run that validation immediately before every
-dispatch; never use a blockquote or hand-copied paraphrase. Backtick and tilde
+dispatch. If a resolved pre-lifecycle feature section lacks the sentinels,
+complete that reference's one-time additive grandfathered-section upgrade at
+SPEC, or at refactor-only PRE-FLIGHT, before validating or dispatching. Never
+use a blockquote or hand-copied paraphrase. Backtick and tilde
 runs inside the payload are uninterpreted bytes. Instruct the actor not to open
 `PROJECT_CONTEXT.md` or read `#### Round log`. Codex's CRITIQUE sandbox blocks
 writes, not reads; Claude `Explore` excludes direct editor tools but retains

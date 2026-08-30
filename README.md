@@ -91,12 +91,13 @@ or environmental failure; it never takes the fast mechanical-fixer route. If
 VERIFY cannot execute assertions at all because of an environmental block, the
 cycle escalates directly to the user.
 
-Before IMPL, PRE-FLIGHT resolves the project's real local quality command and
-stores the resolution—not a previous result—inside the current feature's
-section in `PROJECT_CONTEXT.md`. It revalidates that cached resolution after
-each write. Ambiguous or unsafe candidates require one user decision; no
-usable candidate stops the cycle before IMPL unless the user explicitly opts
-out. See
+Before IMPL, PRE-FLIGHT resolves the project's real local quality command. For
+an existing feature section it stores the resolution—not a previous
+result—there before SPEC; for a brand-new full-cycle feature, SPEC persists the
+PRE-FLIGHT resolution in its initial section-creation write with the contract.
+The cycle revalidates that cached resolution after each write. Ambiguous or
+unsafe candidates require one user decision; no usable candidate stops the
+cycle before IMPL unless the user explicitly opts out. See
 [`skills/graph-engineer/references/quality-gate-detection.md`](skills/graph-engineer/references/quality-gate-detection.md)
 for the resolver order, safety checks, cache schema, bundled-command split,
 retry cap, and escalation rules.
@@ -203,8 +204,8 @@ CRITIQUE cap, anti-loop, QUALITY GATE, and environmental clauses apply too.]
 6. **REFACTOR** — Codex swaps in a constant-time comparison.
    - **Mini-loop:** Return to node **3 QUALITY GATE**, then node **4
      CRITIQUE** — both pass this time.
-7. **VERIFY** — Functional tests run green. The `/goal` condition is met and
-   the loop ends.
+7. **VERIFY** — Functional tests run green. The terminal archival transition
+   succeeds, the `/goal` condition is met, and the loop ends.
 
 ## Checkpointing
 
@@ -334,12 +335,12 @@ workspace-identity limitations, and out-of-scope behavior.
 
 ## Usage
 
-**This is the default-`codex`, write-authorized template** — it lets Codex
-edit files. For a review-only audit that authorizes no edits, use the
-dedicated review-only template in
+The default-`codex`, write-authorized template linked below lets Codex edit
+files. For a review-only audit that authorizes no edits, use the dedicated
+review-only template in
 [`skills/graph-engineer/references/goal-templates.md`](skills/graph-engineer/references/goal-templates.md)
-instead of substituting "review" into the prompt below; the two modes have
-different, incompatible permissions. Review-only also isn't the 8-node cycle
+instead of substituting "review" into a write-authorized prompt; the two modes
+have different, incompatible permissions. Review-only also isn't the 8-node cycle
 running read-only — it's a separate terminal path
 (`PRE-FLIGHT → CRITIQUE → DEBATE/report → DONE`) that skips SPEC, IMPL,
 QUALITY GATE, REFACTOR, and VERIFY. It reviews the scope you name directly
@@ -350,26 +351,14 @@ an absolute sandbox guarantee; follow
 the mutation-detection and prompt-only/tool-list caveats in
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 
-```
-/goal Implement [what you want] in [file/folder or scope], code written and
-fixed by Codex via graph-engineer (Claude does not edit implementation files
-directly). Stop condition: [your verifiable criterion] AND no valid findings
-remain from the adversarial-review (debatable ones get debated, not accepted
-blindly). If the cycle reaches 3 CRITIQUE passes without satisfying the stop
-condition, stop and report the remaining findings instead of continuing. If
-the same underlying finding is restated with no net code change across 2
-consecutive CRITIQUE passes, stop and tell me instead of continuing — this
-floor applies even if you'd otherwise keep going. If no usable quality-gate
-resolution exists without an explicit opt-out, or one activation reaches 3
-failed QUALITY GATE runs, stop and tell me instead of continuing. If
-PRE-FLIGHT or SPEC's elevated-assurance risk-trigger evaluation matches and
-no decision from me is available, stop before IMPL and escalate instead of
-proceeding under either standard or elevated mode.
-At any node, stop and report immediately on an environmental failure (timeout,
-out-of-memory, read-only filesystem, or a missing command/dependency), or if
-PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
-precondition.
-```
+The authoritative ready-to-paste default prompt is the
+[`goal-templates.md` single-message mode](skills/graph-engineer/references/goal-templates.md#single-message-mode-task--stop-condition-combined).
+Use it verbatim rather than copying a shortened duplicate from this README. It
+includes the terminal-archival requirement, mandatory Current-state
+sentinel/count/order and forbidden-heading stop, QUALITY GATE and
+elevated-assurance escalation clauses, anti-loop cutoff, and environmental
+preconditions. Keeping the copyable prompt in one reference prevents these
+safety clauses from drifting independently.
 
 Prefer to review the contract before Codex is authorized to write anything?
 Use the **two-message mode** instead — send a prepare-only request, review
@@ -572,8 +561,12 @@ claims live.
   use case.
 - **The skill creates or updates `PROJECT_CONTEXT.md` in the target
   repository.** It's a real, persistent file in your repo, namespaced per
-  feature — not cleaned up automatically. Review it explicitly (and decide
-  whether to commit it) before wrapping up the work.
+  feature. It remains active context during the cycle; after a successful
+  checkpoint-authorized write cycle, terminal archival atomically moves the
+  full feature section to `PROJECT_CONTEXT.archive/` and leaves its verified
+  pointer in `PROJECT_CONTEXT.md`. If that transition cannot complete safely,
+  the cycle escalates instead of claiming success. Review both the pointer and
+  archive before wrapping up the work.
 - **A checkpoint commit is not an approval.** See
   [Checkpointing](#checkpointing) above. Claude tags every one
   `Cycle-State: CHECKPOINT`, never `COMPLETE`, precisely because passing

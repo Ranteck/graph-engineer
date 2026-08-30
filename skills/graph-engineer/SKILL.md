@@ -308,9 +308,14 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    assurance only with `claude:<account-alias>`;
    `claude-writer:<account-alias>` supports it because CRITIQUE stays local and
    can supply the same 3 fresh parallel `Explore` lenses as `backend: claude`.
-   When the backend is not `codex`, give and persist every mandatory disclosure
-   before SPEC, or before the first dispatched node when the selected mode has
-   no SPEC: (1) same-model diversity loss and (2) the Claude writer's
+   When the backend is not `codex`, give every mandatory disclosure to the user
+   in conversation before SPEC, or before the first dispatched node when the
+   selected mode has no SPEC. For an existing feature section, persist that
+   disclosure before SPEC. For a new full-cycle feature with no section yet,
+   SPEC persists it during the same initial section-creation write as the
+   contract—the earliest context write that is actually possible. In a mode
+   without SPEC, give and persist it before the first dispatched node. The
+   disclosures are: (1) same-model diversity loss and (2) the Claude writer's
    unrestricted ambient authority for every Claude route; for
    `claude:<account-alias>`, also disclose (3) cross-session confidentiality,
    tools/hooks/retention, no redaction, and its weakest writer/reviewer
@@ -347,14 +352,16 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    exists, stop before IMPL or the initial refactor-only CRITIQUE. In
    autonomous `/goal` runs, treat this as an escalation condition, never a
    silent skip. `PROJECT_CONTEXT.md` is Claude's only ordinary writable
-   file-content artifact across the cycle: PRE-FLIGHT writes this QUALITY
-   GATE resolution metadata and the `### Backend` resolution, and — see
-   immediately below — writes `### Critique assurance` too, but only in
-   refactor-only (there is no SPEC there to defer to). In the full 8-node
-   write cycle, PRE-FLIGHT only *evaluates* elevated-assurance triggers here;
-   it writes nothing for `### Critique assurance` yet — SPEC is what finalizes
-   and persists that resolution, once the actual contract exists to evaluate
-   triggers against. Claude never edits implementation files. The sole
+   file-content artifact across the cycle. For an existing feature section,
+   PRE-FLIGHT writes this QUALITY GATE resolution metadata and the `### Backend`
+   resolution before SPEC. For a new full-cycle feature with no section yet,
+   PRE-FLIGHT resolves both values and SPEC persists them in its initial
+   section-creation write with the contract. In refactor-only (there is no SPEC
+   to defer to), PRE-FLIGHT writes both plus `### Critique assurance`. In the
+   full 8-node write cycle, PRE-FLIGHT only *evaluates* elevated-assurance
+   triggers here; SPEC finalizes and persists that resolution once the actual
+   contract exists to evaluate triggers against. Claude never edits
+   implementation files. The sole
    additional file-content path is the terminal, atomic archival move to
    `PROJECT_CONTEXT.archive/<feature-slug>.md`; it is not available during an
    active cycle. Follow
@@ -377,8 +384,10 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 
    In refactor-only, immediately after PRE-FLIGHT has written all of its
    feature-scoped Quality gate, Backend, Critique assurance, and lifecycle
-   scaffolding, commit that `PROJECT_CONTEXT.md` metadata as its own exact-path
-   local step before the first CRITIQUE. Its final staged inspection and
+   scaffolding—including the one-time additive upgrade of a resolved
+   grandfathered section required by `references/context-lifecycle.md`—commit
+   that `PROJECT_CONTEXT.md` metadata as its own exact-path local step before
+   the first CRITIQUE. Its final staged inspection and
    content-inert `git commit` invocation must follow the adjacency and
    forbidden-content-selection-option rules in `references/context-lifecycle.md`.
    If the commit cannot be made safely, stop before dispatch; never leave the
@@ -407,10 +416,12 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
    does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
    Claude's only ordinary writable file-content artifact while the cycle is
-   active: PRE-FLIGHT writes the `### Quality gate` and `### Backend`
-   resolution metadata there, and SPEC writes the feature contract and
-   finalizes `### Critique assurance` there (see immediately below). The
-   orchestrating Claude never edits implementation files.
+   active. For an existing feature, PRE-FLIGHT writes the `### Quality gate`
+   and `### Backend` resolution metadata there before SPEC. For a new feature,
+   PRE-FLIGHT resolves those values and SPEC's initial section-creation write
+   persists them with the feature contract. SPEC also finalizes `### Critique
+   assurance` there (see immediately below). The orchestrating Claude never
+   edits implementation files.
 
    In the full 8-node write cycle (not refactor-only), re-evaluate the
    elevated-assurance triggers here against the actual contract just written
@@ -440,11 +451,14 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    **Bounded current state and history.** Read and write the full active
    feature section. Keep its contract under `#### Current state`, rewrite that
    subsection in place, and immediately run the lifecycle reference's sentinel
-   count/order and forbidden-heading validation after every such write. SPEC
-   does not append its own round-log entry; its contract work is summarized in
-   the initial `IMPL-r00` composite. Follow `references/context-lifecycle.md`
-   for the exact section shape, composite fields, checkpoint locator, and
-   interruption handling.
+   count/order and forbidden-heading validation after every such write. If the
+   resolved section is a grandfathered pre-lifecycle section without the two
+   sentinels, first perform `references/context-lifecycle.md`'s one-time
+   additive structural upgrade, preserving its existing Feature-contract body
+   byte-for-byte. SPEC does not append its own round-log entry; its contract
+   work is summarized in the initial `IMPL-r00` composite. Follow the lifecycle
+   reference for the exact section shape, composite fields, checkpoint locator,
+   and interruption handling.
 
 2. **IMPL** (selected backend writes; Codex by default) —
    ```
