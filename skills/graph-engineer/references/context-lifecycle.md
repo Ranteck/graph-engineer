@@ -46,12 +46,13 @@ level-three resolution blocks in their existing form and position, then splits
 
 #### Round log
 
-##### <round-id>
+##### <IMPL-r00 | REFACTOR-rNN | CRITIQUE-rNN-noop>
 
-- **Node**: <SPEC | IMPL | CRITIQUE | DEBATE | REFACTOR>
-- **Actor/backend**: <orchestrator or selected backend>
-- **Commit**: <checkpoint ref, `pending-this-checkpoint`, or `none`>
-- **Outcome**: <one line>
+- **Actors/backend**: <orchestrator, reviewer, and writer roles / selected backend>
+- **CRITIQUE outcome**: <one-line review result, or `not applicable` for initial IMPL>
+- **DEBATE classifications**: <valid/debatable/false-positive decisions, or `not applicable`>
+- **Resulting writer work**: <bounded IMPL/REFACTOR summary, or `none`>
+- **Checkpoint**: <`locate-by-feature-and-round` or `none`>
 - **Decision notes**: <optional, concise round-scoped rationale>
 ```
 
@@ -67,57 +68,68 @@ Claude needs the latest completed round for DEBATE or the anti-loop cutoff, it
 reads the last `#### Round log` entry directly. Dispatched actors never need
 that marker.
 
-`#### Round log` is append-only and chronological. Append one bounded entry
-after each completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch,
-and REFACTOR round. Use the cycle's stable round labels so entries align with
-checkpoint commits—for example, `IMPL-r00` and `REFACTOR-r04`. A node without
-its own checkpoint still uses the applicable cycle round in its id and records
-`Commit: none`. When an entry is written in the same commit that creates the
-checkpoint it describes, record the literal `Commit: pending-this-checkpoint`;
-the commit cannot contain its own not-yet-created hash.
+`#### Round log` is append-only and chronological, with one **composite
+record per writer iteration**, not one record per graph node. `IMPL-r00`
+records the initial implementation and uses `not applicable` for the review
+and triage fields because it precedes the first CRITIQUE. Each
+`REFACTOR-rNN` record combines the CRITIQUE outcome and DEBATE classifications
+that authorized that writer round with the resulting REFACTOR summary. A
+CRITIQUE-only pass for which no REFACTOR follows uses
+`CRITIQUE-rNN-noop`, records `Resulting writer work: none`, and is written in
+the applicable terminal context commit. SPEC, CRITIQUE, and DEBATE never get
+separate records; QUALITY GATE and VERIFY remain represented by checkpoint or
+terminal-commit evidence.
 
-At the very next context-write opportunity for that feature—whether the next
-round-log append or terminal archival—make backfilling the pending field with
-the actual short hash the first edit in that bounded context-write batch,
-before adding the new round entry or archival content. Resolve and verify that
-hash against the feature's stable round label and checkpoint commit message;
-if it cannot be identified unambiguously, stop and escalate before making the
-new entry or archival change rather than guessing or retaining
-`pending-this-checkpoint`. `Commit: none` is reserved for a round for which no
-checkpoint commit was made. QUALITY GATE and VERIFY do not add round-log
-entries; their results remain represented by checkpoint or terminal-commit
-evidence.
+For a checkpointed IMPL or REFACTOR iteration, Claude prepares the complete
+composite record after QUALITY GATE passes and before staging. The record and
+the implementation changes must land in the **same checkpoint commit**. The
+staged-diff inspection must confirm both the expected writer paths and exactly
+one new composite record under the active feature before commit. An
+interruption before that commit means the iteration is not closed: inspect
+the working tree, conversation evidence, and any existing commit before
+retrying, and stop and escalate if they cannot be reconciled. A checkpoint
+commit missing its corresponding composite record, or a duplicate round id,
+is a protocol inconsistency; do not silently backfill, renumber, or proceed.
+If checkpoint commits are not authorized, this model cannot close a writer
+iteration atomically; stop and escalate rather than claim that the iteration
+was durably recorded.
 
-Each entry records its round id, node, actor/backend, checkpoint ref when one
-was made, and a one-line outcome. Keep any design-decision rationale, rejected
-alternative, or DEBATE false-positive justification in that round's optional
-decision notes rather than weaving history into `#### Current state`. Do not
-copy raw transcripts or unbounded command output into an entry. Never copy a
-secret, credential, or token verbatim into an outcome or decision note;
-identify its location and nature instead. As with cross-session payloads, this
-lifecycle does not redact or scan content automatically, so the orchestrator
-must keep sensitive values out of the log.
+A one-time migration of an already-active legacy per-node ledger cannot place
+reconstructed records retroactively inside commits that already exist. For
+that migration only, rebuild composite records from verified first-parent
+checkpoint metadata and available review/triage evidence, identify the
+migration in the current writer iteration's decision notes, and land the whole
+reconstruction with that current iteration. This exception does not permit a
+future writer iteration to defer its own record.
 
-SPEC reads and writes the full feature section. After other nodes complete,
-the orchestrating Claude performs the bounded current-state update and
-round-log append; a dispatched writer or reviewer does not need access to the
-log in order for its completed round to be recorded.
+`Checkpoint: none` unambiguously means no checkpoint was made for that
+record. `Checkpoint: locate-by-feature-and-round` means the checkpoint is
+self-identifying and stores no hash in the record. Resolve it only from the
+current branch's first-parent ancestry, requiring exactly one commit whose
+subject contains the exact feature name and whose full commit message contains
+exactly one line equal to `Round: <record-heading round>` and exactly one line
+equal to `Cycle-State: CHECKPOINT`. These are stable checkpoint-label lines;
+do not rely on `git interpret-trailers`, because legacy multiline `Findings:`
+text means the existing messages are not necessarily parsed as formal Git
+trailers. Zero or more than one matching commit is ambiguous: stop and
+escalate instead of choosing by recency or loose grep. This locator eliminates
+any placeholder or later backfill.
 
-Node completion and round-log persistence are a **best-effort protocol**, not
-an atomic or idempotent transaction. An interruption can occur after an actor
-finishes but before Claude appends the corresponding entry. On resume, before
-advancing, Claude re-derives any missing entry from available evidence such as
-checkpoint commit messages and conversation history, records only what that
-evidence supports, and escalates if it cannot reconstruct the state safely.
-Discovering a missing or duplicate round id later is itself a signal to stop
-and double-check the cycle state; never silently renumber, deduplicate, or
-continue as if the ledger were authoritative.
+Keep any design-decision rationale, rejected alternative, actor refusal,
+prior review conclusion, or false-positive justification in the applicable
+composite record's optional decision notes rather than weaving history into
+`#### Current state`. Do not copy raw transcripts or unbounded command output
+into a record. Never copy a secret, credential, or token verbatim into an
+outcome or decision note; identify its location and nature instead. As with
+cross-session payloads, this lifecycle does not redact or scan content
+automatically, so the orchestrator must keep sensitive values out of the log.
 
 For refactor-only, which has no SPEC node, PRE-FLIGHT creates the same
 scaffolding when it persists the feature metadata. `#### Current state`
 records only the current scope and user-supplied criteria; it must not pretend
-that a new functional contract was authored. The first completed CRITIQUE then
-starts the round log.
+that a new functional contract was authored. The first completed CRITIQUE
+starts a composite record only when it leads to a REFACTOR checkpoint or
+closes as a CRITIQUE-only no-op pass.
 
 Existing feature sections created before this lifecycle are grandfathered and
 need not be retrofitted merely because a later feature uses the new shape.
@@ -135,7 +147,7 @@ detect some drift but do not turn this disclosure policy into confinement.
 
 | Node or reader | Default feature context | `#### Round log` access |
 |---|---|---|
-| SPEC | Full feature section; authors/rewrites `#### Current state` and appends its completed revision | Full read/write |
+| SPEC | Full feature section; authors/rewrites `#### Current state`; its work is summarized in the later `IMPL-r00` composite | Full read/write |
 | IMPL | Byte-exact, dynamically fenced `#### Current state` block | Prompt omits it and instructs no log read |
 | First standard fresh CRITIQUE | Byte-exact, dynamically fenced `#### Current state` block | Prompt omits it and instructs no log read |
 | Ordinary resumed CRITIQUE, including an elevated resumed canonical round | Byte-exact, dynamically fenced `#### Current state` block plus the review session's own `--resume-last` memory | Prompt omits it; continuity comes from the session |
@@ -156,35 +168,36 @@ when no functional contract exists.
 For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
 the active feature's `#### Current state` text by this exact rule:
 
-1. Locate the active feature's `#### Current state` ATX heading line. Extract
-   the raw bytes after that heading line's line ending through the byte
-   immediately before the next ATX heading line of level 4 or shallower
-   (`####`, `###`, or `##`), whichever occurs first in document order. A
-   candidate boundary has two through four leading `#` bytes followed by
-   whitespace or the line ending.
-2. While scanning for that boundary, track fenced code blocks. A line beginning
-   with a run of at least three backticks or at least three tildes opens a fence
-   when no fence is open. Only a line beginning with the same marker byte, with
-   a run at least as long as the opener and followed only by spaces or tabs,
-   closes it. Heading-like lines while a fence is open never delimit the
-   subsection.
-3. Fail closed unless the scan finds a qualifying boundary heading while no
-   fence is open. If EOF is reached with a fence still open, or if no qualifying
-   level-4-or-shallower heading is found before EOF even though no fence is
-   open, abort extraction and stop and escalate. Never treat EOF as the closing
-   boundary, guess that the feature ended, consume through `#### Round log`, or
-   fall back to a wider range.
-4. Preserve every extracted byte exactly, including leading/trailing blank
-   lines, internal Markdown, nested headings, and fences. Do not trim, indent,
-   prefix, normalize line endings, or otherwise rewrite it.
-5. Put those bytes inside a dedicated outer backtick-fenced code block in the
+1. Within the resolved active `## <feature-name>` section, require exactly one
+   canonical sentinel line whose bytes are `#### Current state` followed only
+   by its line ending, and exactly one later canonical sentinel line whose
+   bytes are `#### Round log` followed only by its line ending (or EOF after
+   the text). Missing, duplicate, reordered, indented, or suffixed sentinels
+   are invalid; stop and escalate rather than infer a boundary.
+2. Validate every intervening line. After zero through three ASCII space bytes,
+   no line may contain two, three, or four `#` bytes followed by a space, tab,
+   or line ending: equivalently, reject `^[ ]{0,3}#{2,4}([ \t]|$)`. Backtick
+   and tilde runs are uninterpreted bytes, not fence syntax; there is no
+   fence-tracking or fence-balance algorithm.
+3. Extract the raw bytes strictly after the `#### Current state` sentinel's
+   line ending through the byte immediately before the `#### Round log`
+   sentinel. Preserve every byte exactly, including blank lines, Markdown,
+   and backtick or tilde runs. Do not trim, indent, prefix, normalize line
+   endings, or otherwise rewrite it.
+4. Put those bytes inside a dedicated outer backtick-fenced code block in the
    dispatch prompt. Choose an outer fence whose run is at least three
    backticks and one byte longer than the longest run of backticks after zero
    through three leading spaces on any extracted line; use the identical run
-   alone on the closing line.
-   This makes the wrapper unambiguous without altering an internal fence. The
-   extracted subsection in the active shape ends with the line ending before
-   `#### Round log`, so the closing fence follows that preserved line ending.
+   alone on the closing line. This makes the wrapper unambiguous without
+   interpreting any payload line as Markdown fence syntax. If the preserved
+   bytes do not end with a line ending, add one before the closing outer fence;
+   that separator belongs to the prompt wrapper, not the extracted payload.
+
+Run steps 1-2 as structural validation immediately after every context write
+that creates or changes `#### Current state`, before ending that write, and
+again immediately before every dispatch that inlines it. Any failure is a
+generic cycle stop-and-escalate condition. Never dispatch a wider range or a
+best-effort paraphrase.
 
 The prompt must name the active feature, identify this fenced block as the
 permitted context, and instruct the actor not to open `PROJECT_CONTEXT.md` or
@@ -209,32 +222,38 @@ been met:
 There is one refactor-only no-op exception, with this strict order:
 
 1. The moment the first CRITIQUE reports no valid findings and its required
-   post-review mutation check succeeds, capture digest #1 with the canonical
-   artifact-identity recipe in `elevated-assurance.md`. This happens before any
-   resulting write to `PROJECT_CONTEXT.md`.
-2. DEBATE confirms the no-valid-findings judgment as pure reasoning. Do not yet
-   persist either the CRITIQUE entry or the DEBATE entry, and make no other
-   context write. The same deferral applies to any required exit-challenger
-   CRITIQUE/DEBATE pair on this prospective no-op path.
+   post-review mutation check succeeds, before any context write, read
+   `git rev-parse HEAD`, require `git status --porcelain=v1 -uall` to be empty,
+   then read HEAD again. Both HEAD values must match; retain that value as the
+   candidate baseline. Command failure, a dirty tree, or unequal HEAD values
+   stops and escalates.
+2. DEBATE confirms the no-valid-findings judgment as pure reasoning. Do not
+   persist a record or make another file write. The same deferral applies to
+   any required exit-challenger CRITIQUE/DEBATE pair.
 3. If the final DONE-clearing pass is reached with **zero REFACTOR rounds**
-   (after an exit challenger too, when elevated mode requires one), recompute
-   digest #2 immediately before writing anything to `PROJECT_CONTEXT.md` and
-   require exact equality with digest #1. No file write may occur between the
-   first capture and this comparison.
-4. A mismatch, or inability to construct or compare either digest, means the
-   artifact changed outside this cycle's tracked writer rounds: stop and
-   escalate instead of taking the no-op path.
-5. Only after an exact match, confirm the PRE-FLIGHT metadata commit described
-   below exists and append **all** deferred round-log entries in one batch, in
-   their actual chronology: each CRITIQUE entry followed by its DEBATE entry.
-   Then make the separate bounded context-only completion commit. Stage exactly
-   `PROJECT_CONTEXT.md` and verify the staged path set contains that one path
-   and nothing else immediately before committing; any extra or missing staged
-   path is a stop-and-escalate condition.
+   (after an exit challenger too, when elevated mode requires one), before any
+   write, bracket cleanliness again: require HEAD to equal the baseline,
+   require porcelain status to be empty, and require a second HEAD read to
+   equal the same baseline. These commands are sequential, not an atomic
+   snapshot; both HEAD checks are mandatory defenses against an intervening
+   branch-tip change.
+4. Only after those checks match, confirm the PRE-FLIGHT metadata commit exists
+   and append one composite `CRITIQUE-rNN-noop` record covering all deferred
+   CRITIQUE outcomes and DEBATE classifications in their actual chronology.
+   Its writer-work field is `none` and its checkpoint field is `none`.
+5. Stage exactly `PROJECT_CONTEXT.md`; inspect the staged path set with a
+   NUL-safe command and require exactly that path, then inspect the staged diff
+   and require that its only semantic change is the expected composite record
+   under the active feature. Also require no unstaged tracked change and no
+   untracked residue.
+   Immediately before committing, re-read HEAD and require it still equals the
+   baseline. Any extra or missing staged path, unrelated context change,
+   residue, command failure, or HEAD mismatch aborts without committing and
+   escalates.
 
 After that commit, confirm the tree is clean and enter DONE. Do not treat the
-absence of a finished-work checkpoint as an error in this exact
-identity-matched zero-REFACTOR case.
+absence of a finished-work checkpoint as an error in this exact HEAD-stable,
+clean-tree zero-REFACTOR case.
 
 The archive path is
 `PROJECT_CONTEXT.archive/<feature-slug>.md`, a sibling of

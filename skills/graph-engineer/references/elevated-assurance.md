@@ -164,8 +164,10 @@ Each lens receives the same feature's `#### Current state` raw bytes inline in
 the unambiguous outer fence defined by `context-lifecycle.md`, the same frozen
 artifact identity, and the same read-only instruction. It is instructed not to
 open `PROJECT_CONTEXT.md` or read `#### Round log`. The lifecycle reference's
-byte-exact extraction, fence-aware boundary scan, and dynamic outer-fence rule
-are mandatory; do not substitute a blockquote or hand-copied text. This is a
+exact-sentinel validation, forbidden-heading check, byte-exact extraction, and
+dynamic outer-fence rule are mandatory immediately before dispatch; do not
+substitute a blockquote or hand-copied text. Backtick and tilde runs in the
+payload are uninterpreted bytes, not parser state. This is a
 prompt-level disclosure rule, not a sandboxed read boundary: Codex's read-only
 sandbox blocks writes, not reads. The lens does **not** receive the builder's
 (IMPL's) narrative, and it does not see another lens's output. Each lens may
@@ -196,13 +198,19 @@ Git-visible state this protocol measures. Accept the printed digest only when
 the one-liner exits zero and stdout is exactly one 64-character lowercase
 hexadecimal value plus its line ending; discard any stdout from a nonzero run.
 
-That scope is exact: Git-tracked content and the index/working-tree state
-represented by the commands above, plus regular non-symlink files that are
-initially untracked and not ignored. The digest does **not** cover ignored files
+That scope is exact: Git-tracked final working-tree content and the coarse
+index/working-tree status represented by the commands above, plus regular
+non-symlink files that are initially untracked and not ignored. The digest does
+**not** cover ignored files
 (including an ignored `.env`), nested submodule working-tree contents,
 repository metadata, or filesystem state outside Git's view. A matching digest
 therefore establishes only that this scoped Git-visible state matched at the
-two sampling points.
+two sampling points. It also does not uniquely encode the index: two states can
+share the same HEAD, final working-tree bytes, and porcelain status while
+partially staging different subsets of the same changes, because `git diff
+HEAD --binary` represents the aggregate HEAD-to-working-tree result rather
+than the staged/unstaged split. Do not claim a matching digest proves an
+identical partially staged index.
 
 Digest values already recorded in the `project-context-scoped-disclosure`
 cycle before this recipe was pinned used an ad hoc encoding and are not
@@ -436,7 +444,8 @@ DEBATE first reaches "no valid findings remain."
 
 - Must be fresh and read-only; confirm no other Codex task is active first.
 - Give it the active feature's `#### Current state` raw bytes inline using the
-  exact extraction and outer-fence serialization in `context-lifecycle.md`
+  exact sentinel validation, extraction, and outer-fence serialization in
+  `context-lifecycle.md`, run immediately before dispatch
   (or, in refactor-only, the requested scope and criteria serialized the same
   way), the current final artifact, and any user-supplied criteria. Instruct it
   not to open `PROJECT_CONTEXT.md`; do **not** provide the prior finding ledger.

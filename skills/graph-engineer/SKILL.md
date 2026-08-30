@@ -240,14 +240,14 @@ After the first REFACTOR write, every loop follows REFACTOR -> QUALITY GATE
 -> CRITIQUE -> DEBATE until no findings remain, then refactor-only terminates
 at DONE. Before declaring DONE, execute the terminal archival transition per
 `references/context-lifecycle.md`. If the first CRITIQUE finds no valid
-findings, capture that reference's canonical artifact-identity digest when the
-result is accepted, before appending the prospective no-op path's CRITIQUE log
-entries; defer those appends as the reference requires. If the final clean pass
-is then reached with zero REFACTOR rounds, use the no-op exception only after
-an immediate recomputation exactly matches that capture. Commit the bounded
-final context update with exactly `PROJECT_CONTEXT.md` staged, skip archival,
-and enter DONE with a clean tree; digest or staged-path mismatch stops and
-escalates.
+findings, establish that reference's clean, HEAD-stable baseline before making
+any context write. If the final clean pass is then reached with zero REFACTOR
+rounds, repeat its bracketed HEAD/clean-tree checks before writing one deferred
+composite no-op record. Commit that bounded update only after its exact-path
+and staged-semantic checks pass; any HEAD, cleanliness, residue, or staged-diff
+mismatch stops and escalates. The canonical artifact digest remains an
+artifact-drift check for the reviewer paths defined by elevated assurance and
+non-Codex backend selection; it is not used for this no-op gate.
 
 Treat QUALITY GATE as a numbered invariant checkpoint, not a new actor or a
 fixed independent pipeline stage. Attach it as a capped retry edge to the
@@ -432,11 +432,12 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 
    **Bounded current state and history.** Read and write the full active
    feature section. Keep its contract under `#### Current state`, rewrite that
-   subsection in place, and append the completed SPEC revision under
-   `#### Round log`. Follow `references/context-lifecycle.md` for the exact
-   section shape, round-entry fields, grandfathering rule, and the
-   evidence-based recovery required because actor completion plus round-log
-   persistence is best-effort rather than atomic or idempotent.
+   subsection in place, and immediately run the lifecycle reference's sentinel
+   count/order and forbidden-heading validation after every such write. SPEC
+   does not append its own round-log entry; its contract work is summarized in
+   the initial `IMPL-r00` composite. Follow `references/context-lifecycle.md`
+   for the exact section shape, composite fields, checkpoint locator, and
+   interruption handling.
 
 2. **IMPL** (selected backend writes; Codex by default) —
    ```
@@ -448,11 +449,13 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    ```
 
    Every selected writer backend receives that byte-exact fenced subsection
-   inline. `references/context-lifecycle.md` defines the boundary scan,
-   preservation, and dynamic outer-fence rule represented by the placeholder;
+   inline. Immediately before dispatch, run `references/context-lifecycle.md`'s
+   exact-sentinel and forbidden-heading validation. That reference defines the
+   sentinel extraction, preservation, and dynamic outer-fence rule represented
+   by the placeholder;
    do not substitute a blockquote or hand copy. This is an instruction-based
    disclosure policy, not a sandboxed read boundary; that reference also
-   defines the guarantee caveat, disclosure matrix, and round-recording rules.
+   defines the guarantee caveat, disclosure matrix, and composite-record rules.
 
    **Backend dispatch.** The invocation above is the unchanged default
    `codex` path. For `claude`, `claude:<account-alias>`, or
@@ -513,7 +516,15 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    gate's outcome when it runs, and pass/fail is Claude's own finding to act
    on. Stage only the paths this cycle actually touched — inspect
    `git status --porcelain=v1 -uall` and `git diff --cached` before
-   committing, never `git add -A`/`git add .` blind — and never push.
+   committing, never `git add -A`/`git add .` blind — and never push. Before
+   staging, append the one composite `IMPL-r00` or `REFACTOR-rNN` record
+   defined in `references/context-lifecycle.md`; stage it with the writer
+   changes in this same checkpoint commit. The staged-diff inspection must
+   confirm the expected writer paths and exactly that active-feature record.
+   The record uses `Checkpoint: locate-by-feature-and-round`; it never stores
+   a guessed hash or a value that must be backfilled later. If checkpoints
+   were not authorized, stop rather than claim a writer iteration was closed
+   under the composite persistence model.
 
    A checkpoint commit is a **restore point for a mechanically-admissible
    tree, not an approval**: QUALITY GATE covers lint/format/types/build only,
@@ -635,12 +646,14 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
 
    All standard fresh and resumed reviewer paths receive the permitted raw
    `#### Current state` bytes inline in the dynamic outer fence defined by
-   `references/context-lifecycle.md`; the prompt placeholder means that exact
-   extraction/serialization, not a blockquote. This narrows accidental
+   `references/context-lifecycle.md`; immediately before each dispatch, run
+   that reference's exact-sentinel and forbidden-heading validation. The
+   prompt placeholder means that exact extraction/serialization, not a
+   blockquote. This narrows accidental
    disclosure but is instruction-based, not a sandboxed read boundary; resumed
    Codex continuity comes from `--resume-last`, not from rereading the log. See
-   that reference for the complete caveat, node-specific
-   rules, and completed-pass recording.
+   that reference for the complete caveat, node-specific rules, and composite
+   iteration recording.
 
    **Known `--resume-last` identity limitation.** The pinned plugin exposes no
    resume-by-thread-ID; it selects by recency. Every resumed CRITIQUE,
@@ -735,9 +748,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    unnecessary changes — DEBATE is what prevents an unarbitrated self-fix loop.
 
    DEBATE may read the active feature's `#### Round log` in full when needed,
-   including for the anti-loop comparison, and records each completed triage
-   batch there. Follow `references/context-lifecycle.md`; this permission is
-   for the orchestrating Claude, not a dispatched reviewer.
+   including for the anti-loop comparison. It does not append a standalone
+   entry: its classifications are carried into the next checkpointed writer
+   iteration's composite record, or the terminal CRITIQUE-only no-op record.
+   Follow `references/context-lifecycle.md`; this permission is for the
+   orchestrating Claude, not a dispatched reviewer.
 
    **Elevated assurance fan-in.** When node 4 ran in elevated mode, first
    normalize the 3 lenses' reports into one finding record per underlying
@@ -803,8 +818,10 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    dynamically fenced `#### Current state` subsection inline, with an
    instruction not to read `#### Round log`. The placeholder invokes
    `references/context-lifecycle.md`'s exact extraction/serialization rule.
-   That is a disclosure instruction, not read confinement; follow the same
-   reference for the caveat and round recording.
+   Run that reference's exact-sentinel and forbidden-heading validation
+   immediately before dispatch. This is a disclosure instruction, not read
+   confinement; follow the same reference for the caveat and composite round
+   recording.
 
    **Backend dispatch.** The invocation and recovery protocol below are the
    unchanged default `codex` path. For `claude`,

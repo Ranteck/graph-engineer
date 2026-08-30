@@ -210,11 +210,14 @@ the exit challenger — capture the digest immediately before dispatch,
 recompute it after the reply, and accept the review only if they match exactly.
 A mismatch, or inability to construct or compare either digest, is a
 stop-and-escalate condition. This detects drift only in the canonical recipe's
-scoped Git-visible state: tracked content and index/working-tree state, plus
-initially-untracked-but-not-ignored regular files. It does not cover ignored
+scoped Git-visible state: tracked final working-tree content and coarse
+index/working-tree status, plus initially-untracked-but-not-ignored regular
+files. It does not cover ignored
 files, nested submodule working-tree contents, repository metadata, or
-filesystem state outside Git's view. It is not a sandbox or prevention
-guarantee.
+filesystem state outside Git's view. Nor does it uniquely encode a partially
+staged index when HEAD, final working-tree bytes, and porcelain status are
+otherwise identical; see `elevated-assurance.md` for the exact limitation. It
+is not a sandbox or prevention guarantee.
 
 Because CRITIQUE is always a local `Explore` call under
 `claude-writer:<account-alias>`, use the identical per-call digest rule just
@@ -229,9 +232,11 @@ place in the graph.
 
 For every backend, `#### Current state` scoping is instruction-based, not a
 sandboxed read boundary. In each IMPL, CRITIQUE, and REFACTOR prompt, inline
-the permitted subsection using `context-lifecycle.md`'s exact byte-range,
-fence-aware extraction and dynamic outer-fence serialization; never use a
-blockquote or hand-copied paraphrase. Instruct the actor not to open
+the permitted subsection using `context-lifecycle.md`'s exact-sentinel
+validation, forbidden-heading check, byte-exact extraction, and dynamic
+outer-fence serialization. Run that validation immediately before every
+dispatch; never use a blockquote or hand-copied paraphrase. Backtick and tilde
+runs inside the payload are uninterpreted bytes. Instruct the actor not to open
 `PROJECT_CONTEXT.md` or read `#### Round log`. Codex's CRITIQUE sandbox blocks
 writes, not reads; Claude `Explore` excludes direct editor tools but retains
 shell access, and cross-session dispatch cannot remove remote tools. Inline
@@ -373,10 +378,10 @@ completion. The skill has no built-in request-correlation ID, automated
 timeout, disconnect recovery, or retry mechanism, so this is a best-effort
 causal convention rather than a guarantee. If the target stops responding,
 stop and ask the user to help unblock the session instead of redispatching or
-guessing that the node completed. Separately, persisting a completed node to
-`#### Round log` is also best-effort rather than atomic/idempotent; use the
-evidence-based interruption recovery in `context-lifecycle.md` before
-advancing after a resumed handoff.
+guessing that the node completed. A writer iteration is closed only when its
+composite record and implementation changes land together in the checkpoint
+commit defined by `context-lifecycle.md`; an interrupted or missing pair is a
+stop-and-reconcile condition, not a best-effort per-node backfill.
 
 For IMPL and REFACTOR, send the relevant `#### Current state` raw bytes inline
 using `context-lifecycle.md`'s exact extraction and outer-fence serialization,

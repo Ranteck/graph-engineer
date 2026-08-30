@@ -542,25 +542,24 @@ feature's section in `PROJECT_CONTEXT.md`:
      Critique assurance`, `### Backend`, and `### Checkpoint commits`
      resolutions remain in their current form and position as bounded current
      resolutions. Claude reads the last `#### Round log` entry when DEBATE or
-     the anti-loop cutoff needs the latest completed round.
-   - `#### Round log` — append-only, chronological: one bounded entry per
-     completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch, and
-     REFACTOR round. Each entry: round id (matching the existing checkpoint
-     commit round labels, e.g. `IMPL-r00`, `REFACTOR-r04`), node, actor/
-     backend, commit ref if a checkpoint was made, and a one-line outcome. An
-     entry committed inside its own checkpoint uses
-     `pending-this-checkpoint`; the next context-write batch backfills the
-     actual short hash before adding new round or archival content.
-     Design rationale, rejected alternatives, actor refusals, review
-     conclusions, and false-positive justifications belong in the applicable
-     entry's `Decision notes`. Existing feature sections are grandfathered;
-     the split applies to features SPEC'd under this lifecycle. Outcomes and
-     decision notes never copy secrets, credentials, or tokens verbatim; they
-     reference the value's nature/location instead.
-     Node completion and log persistence are best-effort, not atomic or
-     idempotent: after interruption Claude re-derives a missing entry from
-     checkpoint commits and conversation evidence before proceeding, while a
-     duplicate or missing round id is a signal to stop and double-check state.
+     the anti-loop cutoff needs the latest completed iteration.
+   - `#### Round log` — append-only and chronological, with one composite
+     record per checkpointed writer iteration (`IMPL-r00` or
+     `REFACTOR-rNN`), plus a `CRITIQUE-rNN-noop` record for a CRITIQUE-only
+     terminal pass. Each record combines the CRITIQUE outcome, DEBATE
+     classifications, resulting writer work (or `none`), actors/backend, a
+     checkpoint locator, and optional decision notes. SPEC and individual
+     CRITIQUE/DEBATE nodes do not get standalone entries.
+     A checkpointed composite is written in the same commit as its writer
+     changes. `Checkpoint: locate-by-feature-and-round` resolves uniquely from
+     the current branch's first-parent ancestry using the exact feature name in
+     the subject plus exact full-message lines `Round: <round>` and
+     `Cycle-State: CHECKPOINT`; zero or multiple matches stop and escalate.
+     It does not rely on Git's formal trailer parser. `Checkpoint: none` means
+     no checkpoint exists. No stored hash, placeholder, or later backfill is
+     used. Design rationale and review history stay in `Decision notes`, and
+     secrets are referenced only by nature/location. A missing or duplicate
+     composite is a protocol inconsistency, not a best-effort repair cue.
 
 2. **Node-specific instruction-based disclosure.** Codex's sandbox blocks
    CRITIQUE writes, not reads, and Claude `Explore` retains shell access and
@@ -568,21 +567,18 @@ feature's section in `PROJECT_CONTEXT.md`:
    prompts therefore inline the permitted `#### Current state` raw bytes in an
    unambiguous fenced block and instruct the actor not to open the context file
    or read `#### Round log`:
-   - The orchestrator extracts bytes after the active feature's `#### Current
-     state` heading line through the byte before the next `####`, `###`, or
-     `##` ATX heading in document order. Heading-like lines inside an open
-     backtick or tilde fence do not terminate the range.
-   - If the scan reaches EOF with an unclosed fence, or finds no qualifying
-     heading before EOF at all, extraction aborts and stops/escalates. EOF is
-     never used as an inferred boundary and the range is never widened.
-   - It preserves the range byte-for-byte and wraps it in a dedicated backtick
-     fence one byte longer than the longest backtick run after up to three
-     leading spaces on any extracted line (minimum three).
-     `context-lifecycle.md` is authoritative
-     for the exact boundary, matching-fence, and serialization algorithm.
-   - **SPEC**: reads and writes the full section (it authors/edits
-     `#### Current state` and appends the round's entry to `#### Round
-     log`).
+   - The active feature must contain exactly one canonical `#### Current state`
+     sentinel line and exactly one later canonical `#### Round log` sentinel
+     line. The orchestrator extracts strictly between those exact lines.
+   - Any intervening line matching `^[ ]{0,3}#{2,4}([ \t]|$)` is invalid and
+     stops/escalates. Backtick and tilde runs are uninterpreted bytes; there is
+     no fence parser or balance state.
+   - The same count/order/body validation runs immediately after every write
+     to Current state and immediately before every inlining dispatch. The
+     extracted bytes are preserved exactly and dynamically outer-fenced;
+     `context-lifecycle.md` is authoritative for serialization.
+   - **SPEC**: reads and writes the full section, validates Current state after
+     writing, and is summarized later in the `IMPL-r00` composite.
    - **IMPL**: receives the fenced `#### Current state` bytes inline.
    - **Ordinary resumed CRITIQUE** (`--resume-last`, standard mode or an
      elevated-mode resumed canonical round): receives fenced `#### Current
@@ -616,14 +612,16 @@ feature's section in `PROJECT_CONTEXT.md`:
      `Cycle-State: COMPLETE` instead of `CHECKPOINT`. Before either terminal
      edge declares DONE, `SKILL.md` explicitly invokes this transition.
    - **Zero-REFACTOR refactor-only exception**: when the first CRITIQUE finds no
-     valid findings, capture digest #1 before any file write. DEBATE confirms
-     the no-op result as pure reasoning, without persisting either entry. At the
-     final clean pass, with zero REFACTOR rounds, recompute digest #2 immediately
-     before any write and require an exact match. Mismatch or an indeterminate
-     comparison stops and escalates. Only after a match, append all deferred
-     CRITIQUE and DEBATE entries in chronological order in one batch and make
-     the bounded final context commit, staging exactly `PROJECT_CONTEXT.md`;
-     any other staged path also stops and escalates.
+     valid findings, bracket an empty porcelain-status check with two matching
+     HEAD reads before any context write and retain that HEAD. DEBATE is pure
+     reasoning. At the final clean pass, with zero REFACTOR rounds, repeat
+     HEAD/status/HEAD before any write and require both HEAD values to match the
+     baseline. Only then append one deferred composite no-op record. Stage
+     exactly `PROJECT_CONTEXT.md`, require the staged diff to contain only that
+     active-feature record, reject unstaged/untracked residue, and recheck HEAD
+     immediately before commit. Any mismatch or command failure stops and
+     escalates. The reviewer artifact digest remains available to elevated and
+     non-Codex review paths but is not used for this gate.
    - **Slug/path safety**: derive `<feature-slug>` deterministically from the
      feature heading using lowercase kebab-case matching `[a-z0-9-]+`. Reject
      `/`, `..`, a leading `.`, an empty slug, any canonicalized path outside
@@ -678,9 +676,12 @@ feature's section in `PROJECT_CONTEXT.md`:
    shell recipe over NUL-delimited HEAD, porcelain status, binary diff, and
    sorted untracked-file path/content hashes. Both sides of every comparison
    must use that recipe. Its drift coverage is limited to Git-visible tracked
-   content and index/working-tree state plus initially untracked, non-ignored
-   regular files; it does not cover ignored files, submodule internals, or
-   filesystem state outside Git's view.
+   final working-tree content and coarse index/working-tree status plus
+   initially untracked, non-ignored regular files; it does not cover ignored
+   files, submodule internals, or
+   filesystem state outside Git's view, and it does not uniquely encode
+   different partially staged index splits when HEAD, final working-tree bytes,
+   and porcelain status are otherwise identical.
 
 **Explicitly out of scope for this feature**: lossy compaction or summarization
 of `#### Round log`; one-live-file-per-active-feature layout; retrofitting
@@ -699,90 +700,81 @@ zero-REFACTOR no-op, or the corresponding escalation.
 
 #### Round log
 
-##### SPEC-r00
-
-- **Node**: SPEC
-- **Actor/backend**: Claude orchestrator / `backend: codex`
-- **Commit**: none
-- **Outcome**: Finalized the feature contract for bounded current state,
-  node-scoped reads, and lossless terminal archival.
-- **Decision notes**: The archive pointer records the last finished-work
-  checkpoint hash, not the archival commit's self-hash, avoiding an impossible
-  Git fixed point.
-
 ##### IMPL-r00
 
-- **Node**: IMPL
-- **Actor/backend**: Codex / `backend: codex`
-- **Commit**: none
-- **Outcome**: Added the lifecycle reference, node-scoped dispatch rules,
-  atomic archive protocol, and required consistency pointers.
-
-##### CRITIQUE-r00
-
-- **Node**: CRITIQUE
-- **Actor/backend**: Elevated Codex lenses and canonicalization / `backend:
-  codex`
-- **Commit**: none
-- **Outcome**: Found disclosure, terminal-path, identity, continuity, and
-  archival-integrity gaps in the initial implementation.
-- **Decision notes**: The cold-review contract treats latest-round outcomes and
-  other decision history as reviewer-anchoring context rather than current
-  state.
-
-##### DEBATE-r00
-
-- **Node**: DEBATE
-- **Actor/backend**: Claude orchestrator / `backend: codex`
-- **Commit**: none
-- **Outcome**: Triaged F1-F11 and F13 as valid and F12 as a non-defect.
-- **Decision notes**: A per-feature live-file layout and lossy compaction were
-  rejected because neither bounds one active feature without sacrificing the
-  lossless ledger. IMPL-r00 refused the self-referential archival-commit hash;
-  the accepted pointer stores the preceding finished-work checkpoint instead.
+- **Actors/backend**: Claude orchestrator and Codex writer / `backend: codex`
+- **CRITIQUE outcome**: not applicable — initial implementation preceded the
+  first review.
+- **DEBATE classifications**: not applicable.
+- **Resulting writer work**: Added the lifecycle reference, node-scoped
+  disclosure, terminal archival protocol, and cross-file routing.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: The archive pointer stores the preceding finished-work
+  checkpoint rather than the archival commit's impossible self-hash.
 
 ##### REFACTOR-r01
 
-- **Node**: REFACTOR
-- **Actor/backend**: Codex / `backend: codex`
-- **Commit**: `7cd6276`
-- **Outcome**: Applied the first triaged lifecycle, archival, disclosure, and
-  recovery corrections.
+- **Actors/backend**: Elevated Codex reviewers, Claude triage, and Codex writer
+  / `backend: codex`
+- **CRITIQUE outcome**: Found cold-review disclosure, terminal-edge, path,
+  identity, continuity, and archival-integrity gaps in IMPL-r00.
+- **DEBATE classifications**: F1-F11 and F13 valid; F12 was a non-defect because
+  the accepted pointer stores the preceding checkpoint, not a self-hash.
+- **Resulting writer work**: Applied the first lifecycle, archival, disclosure,
+  no-op, identity, and recovery corrections.
+- **Checkpoint**: locate-by-feature-and-round
 - **Decision notes**: A resumed write selected an unrelated cancelled session,
   confirming the named-feature memory check is a mitigation rather than
-  resume-by-thread identity.
-
-##### CRITIQUE-r01
-
-- **Node**: CRITIQUE
-- **Actor/backend**: Codex / `backend: codex`
-- **Commit**: none
-- **Outcome**: Confirmed F2, F4, F6-F11, and F13 closed; found residuals in F1,
-  F3, and F5 plus an underspecified digest encoding.
-- **Decision notes**: Digest strings recorded before the canonical recipe used
-  ad hoc delimiters and are not directly comparable to future values. The
-  existing no-drift conclusion remains supported by the three fresh lens
-  recomputations agreeing with one another.
-
-##### DEBATE-r01
-
-- **Node**: DEBATE
-- **Actor/backend**: Claude orchestrator / `backend: codex`
-- **Commit**: none
-- **Outcome**: Accepted all four residual findings for a second REFACTOR pass.
-- **Decision notes**: Current state is present-tense only; historical rationale
-  stays in this ledger. Inline disclosure uses byte-exact, fence-aware
-  extraction and dynamic fenced serialization. The zero-REFACTOR exception
-  also requires canonical artifact identity and an exclusive context-file
-  commit.
+  resume-by-thread identity. A per-feature live-file split and lossy log
+  compaction remained out of scope because neither bounds one active feature
+  while preserving the full record.
 
 ##### REFACTOR-r02
 
-- **Node**: REFACTOR
-- **Actor/backend**: Codex / `backend: codex`
-- **Commit**: `06782cc`
-- **Outcome**: Closed the residual current-state, zero-REFACTOR, prompt-framing,
-  and artifact-digest specification gaps.
-- **Decision notes**: The no-op path defers its own CRITIQUE log writes until
-  after the identity comparison so expected context metadata cannot invalidate
-  the captured baseline.
+- **Actors/backend**: Codex reviewer, Claude triage, and Codex writer /
+  `backend: codex`
+- **CRITIQUE outcome**: Confirmed F2, F4, F6-F11, and F13 closed; found F1, F3,
+  and F5 residuals plus an underspecified digest encoding.
+- **DEBATE classifications**: All four residual findings valid.
+- **Resulting writer work**: Moved decision history out of Current state,
+  strengthened the zero-REFACTOR identity gate, specified byte-exact inline
+  extraction/serialization, and pinned the canonical digest recipe.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Pre-recipe digest strings used ad hoc delimiters and are
+  not comparable to canonical values; the earlier clean-state conclusion was
+  based on the three lenses' agreeing recomputations.
+
+##### REFACTOR-r03
+
+- **Actors/backend**: Codex reviewer, Claude triage, and Codex writer /
+  `backend: codex`
+- **CRITIQUE outcome**: Found F3 and F5 still partial, plus undefined
+  checkpoint backfill and overclaimed digest coverage.
+- **DEBATE classifications**: All four findings valid.
+- **Resulting writer work**: Added fail-closed EOF extraction, reordered the
+  no-op comparison before context writes, introduced checkpoint backfill, and
+  scoped digest guarantees to Git-visible state.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: This iteration exposed that prose parsing, digest-gated
+  no-op identity, and opportunistic hash backfill remained fragile even after
+  their local edge cases were patched.
+
+##### REFACTOR-r04
+
+- **Actors/backend**: Codex design reviewer, Claude triage, and Codex writer /
+  `backend: codex`
+- **CRITIQUE outcome**: Confirmed F3 and F5 remained partial, checkpoint
+  backfill was not followed by its introducing round, and the digest did not
+  uniquely encode partially staged index state; challenged all three designs.
+- **DEBATE classifications**: The corrected root simplifications were accepted:
+  exact sentinels, HEAD plus clean-tree for the no-op gate, immutable checkpoint
+  locators, and composite iteration records.
+- **Resulting writer work**: Replaced the fence parser, no-op digest gate,
+  mutable checkpoint hash, and per-node best-effort ledger with the simplified
+  present contracts; terminal archival mechanics remain unchanged.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Backtick and tilde runs are uninterpreted payload bytes.
+  Structural validation runs after Current-state writes and before dispatch;
+  generic autonomous goals stop on failure. This same checkpoint performs the
+  one-time migration of pre-r04 per-node history into composites; future
+  writer iterations may not defer their own record.
