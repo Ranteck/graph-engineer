@@ -537,16 +537,14 @@ feature's section in `PROJECT_CONTEXT.md`:
    SPEC onward:**
    - Every lifecycle feature name must already match lowercase ASCII
      `[a-z0-9-]+`; reject and escalate before writing any heading rather than
-     normalizing an invalid name. For a brand-new full-cycle feature, zero
-     exact headings is valid only at SPEC's initial authoring and means create
-     exactly one section. If `PROJECT_CONTEXT.md` is absent, SPEC creates the
-     file and section together; file creation is not a substitute for heading
-     creation. PRE-FLIGHT resolves metadata and defers its context write to
-     that SPEC bootstrap. In refactor-only, PRE-FLIGHT performs the analogous
-     initial scaffolding bootstrap because there is no SPEC. Immediately after
-     either bootstrap, and at every later resolution, exactly one exact
-     heading is mandatory; a missing file, zero matches, or multiple matches
-     stop and escalate before sentinel validation, extraction, or dispatch.
+     normalizing an invalid name. Resolve the active feature heading by exact
+     match to `## <feature-name>`. SPEC creates a new full-cycle feature
+     section (and `PROJECT_CONTEXT.md` itself if needed); refactor-only
+     PRE-FLIGHT creates its section and scaffolding because there is no SPEC.
+     Feature names are unique by convention and chosen by the orchestrating
+     Claude, not untrusted input. Heading uniqueness is not mechanically
+     counted or verified; duplicate or archived-name collisions are a
+     documented, accepted risk.
    - `#### Current state` — bounded and rewritten in place: the current
      contract or refactor-only scope/criteria. It contains no latest-round
      marker, rejected alternative, past actor refusal, prior-review conclusion,
@@ -582,11 +580,8 @@ feature's section in `PROJECT_CONTEXT.md`:
    prompts therefore inline the permitted `#### Current state` raw bytes in an
    unambiguous fenced block and instruct the actor not to open the context file
    or read `#### Round log`:
-   - Outside the one SPEC/refactor-only PRE-FLIGHT bootstrap write described
-     above, before any sentinel validation, extraction, or dispatch, the whole
-     file must contain exactly one exact `## <feature-name>` heading. A missing
-     file, zero matches, or multiple matches stop and escalate. The bootstrap
-     must establish and immediately verify exact-one before any dispatch.
+   - Resolve the active feature heading by exact match to
+     `## <feature-name>` before sentinel validation, extraction, or dispatch.
    - The active feature must contain exactly one canonical `#### Current state`
      sentinel line and exactly one later canonical `#### Round log` sentinel
      line. The orchestrator extracts strictly between those exact lines.
@@ -731,11 +726,11 @@ two-subheading shape, byte-exact prompt disclosure, round history, no-op rule,
 and archival mechanics. `SKILL.md` links each affected node to it;
 `elevated-assurance.md` owns the canonical artifact-identity recipe;
 `backend-selection.md` reuses both contracts for every backend. The
-orchestrator's archive write remains limited to the terminal transition, and
-all seven autonomous goal templates stop when exact-one feature-heading
-resolution fails outside the explicit bootstrap exception. Their completion
-conditions also require the terminal transition, the verified zero-REFACTOR
-no-op, or the corresponding escalation.
+orchestrator's archive write remains limited to the terminal transition. The
+autonomous goal templates stop on Current-state sentinel/count/order or
+forbidden-heading validation failure, and their completion conditions require
+the terminal transition, the verified zero-REFACTOR no-op, or the
+corresponding escalation.
 
 #### Round log
 
@@ -854,3 +849,23 @@ no-op, or the corresponding escalation.
   initial section write; from then on, missing, zero, or duplicate resolution
   is fail-closed. The feature-name grammar makes the delimited subject token
   structurally non-injectable.
+
+##### REFACTOR-r07
+
+- **Actors/backend**: User-directed descope and Codex writer / `backend: codex`
+- **CRITIQUE outcome**: Follow-on review found that the exact-one heading rule
+  and its bootstrap exception could not distinguish new from prior malformed
+  or archived identity, complicated disclosure ordering, and left
+  grandfathered sections without a maintainable path.
+- **DEBATE classifications**: All three follow-on findings valid; no finding
+  was reclassified as false-positive. The user accepted the residual
+  duplicate/archived-name collision risk and descoped mechanical uniqueness.
+- **Resulting writer work**: Restored simple exact-heading resolution, removed
+  the heading-count/bootstrap and goal-template stop machinery, and documented
+  feature-name uniqueness as a convention and accepted risk. Retained the
+  `[a-z0-9-]+` name grammar and all unrelated r01-r06 safeguards.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Feature names are selected by the orchestrating Claude,
+  not untrusted input. This repository has had two feature identities and no
+  observed name collision; the theoretical completeness gap is deliberately
+  not enforced mechanically.

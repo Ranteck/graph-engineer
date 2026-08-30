@@ -12,6 +12,14 @@ and branch state and can corrupt the shared lifecycle record. Stop and
 coordinate externally rather than starting a second cycle; this document does
 not define locking or compare-and-swap recovery.
 
+This lifecycle also assumes feature names are unique by convention. The
+orchestrating Claude chooses them; they are not accepted from untrusted or
+adversarial input. Resolution uses an exact heading match but does not count or
+mechanically verify heading uniqueness. A duplicate heading or an archived-name
+collision is therefore a documented, accepted risk: no such collision has
+occurred in this repository's feature history, and this lifecycle deliberately
+does not add enforcement for that theoretical case.
+
 That limitation also applies when binding a commit to inspected staged
 content. For every commit flow below that inspects staged paths or a staged
 diff, complete all other checks first, make that staged-content inspection the
@@ -33,39 +41,16 @@ implementation files.
 
 Every lifecycle feature name must match the lowercase ASCII kebab-case grammar
 `[a-z0-9-]+`, with no other characters. Validate the proposed feature name
-before counting or writing headings. A name that does not match is a
+before resolving or writing headings. A name that does not match is a
 stop-and-escalate condition and must never be normalized into a different
 heading.
 
-Outside the explicit new-feature bootstrap below, search all of
-`PROJECT_CONTEXT.md` before resolving an active feature section and require
-exactly one heading whose complete line is exactly `## <feature-name>`
-(followed only by its line ending, or by EOF). Zero exact matches or more than
-one exact match is a stop-and-escalate condition. Do not continue to sentinel
-validation, section extraction, or any actor dispatch until this
-heading-identity check succeeds.
-
-There is exactly one bootstrap exception for a valid new feature name:
-
-- In a full 8-node cycle, SPEC's initial authoring may observe zero exact
-  headings and create exactly one `## <feature-name>` section. If
-  `PROJECT_CONTEXT.md` itself does not exist, SPEC creates the file and that
-  section together; file creation does not independently satisfy heading
-  creation. PRE-FLIGHT resolves the new feature's metadata but defers its
-  context-file write for SPEC to persist in the new section.
-- In refactor-only, which has no SPEC node, PRE-FLIGHT's initial scaffolding
-  write may likewise observe zero exact headings and create exactly one
-  section, creating `PROJECT_CONTEXT.md` and the section together when the file
-  is absent.
-
-The exception applies only at that initial creation point and only when the
-exact-match count is zero. One match means the feature already exists and must
-use ordinary exact-one resolution; multiple matches always stop and escalate.
-Immediately after the bootstrap write, require exactly one exact heading and
-run the required structural validation. From then forward, every resolution
-for IMPL, CRITIQUE, DEBATE, REFACTOR, archival, and any later cycle requires
-exactly one match; a missing file, zero matches, or multiple matches stop and
-escalate before sentinel validation, extraction, or dispatch.
+Resolve the active feature section by exact match to a complete
+`## <feature-name>` heading line. In a full 8-node cycle, SPEC creates
+`PROJECT_CONTEXT.md` if it is missing and creates the named section for a new
+feature. In refactor-only, which has no SPEC node, PRE-FLIGHT creates the named
+section with its lifecycle scaffolding. Heading resolution performs no
+file-wide cardinality check.
 
 Every feature section created from this lifecycle onward keeps the existing
 level-three resolution blocks in their existing form and position, then splits
@@ -179,8 +164,7 @@ cross-session payloads, this lifecycle does not redact or scan content
 automatically, so the orchestrator must keep sensitive values out of the log.
 
 For refactor-only, which has no SPEC node, PRE-FLIGHT creates the same
-scaffolding when it persists the feature metadata, using the bootstrap
-exception above only for a valid new feature with zero matches.
+scaffolding when it persists the feature metadata.
 `#### Current state` records only the current scope and user-supplied criteria;
 it must not pretend that a new functional contract was authored. The first
 completed CRITIQUE starts a composite record only when it leads to a REFACTOR
@@ -188,19 +172,15 @@ checkpoint or closes as a CRITIQUE-only no-op pass.
 
 Existing feature sections created before this lifecycle are grandfathered and
 need not be retrofitted merely because a later feature uses the new shape.
-This grandfathering covers section shape only; any feature activated under
-this lifecycle must still pass the feature-name grammar before resolution.
+Any feature activated under this lifecycle must still pass the feature-name
+grammar before resolution.
 
 ## Default disclosure by node
 
-These are instruction-based disclosure defaults. Except during SPEC's or
-refactor-only PRE-FLIGHT's one initial bootstrap write, resolve the active
-feature heading first by requiring exactly one exact `## <feature-name>`
-heading in the whole file. A missing file, zero matches, or multiple matches
-stop and escalate before any sentinel validation, extraction, or dispatch.
-Then instruct each actor not to read or write another feature's section. They
-are **not sandbox-enforced read
-boundaries**: the default Codex
+These are instruction-based disclosure defaults. Resolve the active feature
+heading first by exact match to `## <feature-name>`, then instruct each actor
+not to read or write another feature's section. They are **not sandbox-enforced
+read boundaries**: the default Codex
 sandbox blocks writes during CRITIQUE, not reads, and Claude `Explore`
 reviewers retain shell access despite lacking direct editor tools. A
 dispatched actor can still read other content or, on a non-Codex route,
@@ -230,13 +210,10 @@ when no functional contract exists.
 For IMPL, CRITIQUE, and REFACTOR, the orchestrator must extract and serialize
 the active feature's `#### Current state` text by this exact rule:
 
-First apply the file-wide exact-heading uniqueness check above. A bootstrap
-write must have completed and passed its immediate exact-one post-write check
-before this extraction algorithm can run. Do not start the algorithm unless
-it resolves exactly one active section; a missing file, zero matches, or
-multiple exact feature-heading matches stop and escalate.
+First resolve the active feature heading by exact match to
+`## <feature-name>`.
 
-1. Within that uniquely resolved active `## <feature-name>` section, require
+1. Within that resolved active `## <feature-name>` section, require
    exactly one canonical sentinel line whose bytes are `#### Current state`
    followed only by its line ending, and exactly one later canonical sentinel
    line whose bytes are `#### Round log` followed only by its line ending (or
@@ -331,8 +308,8 @@ The archive path is
 `PROJECT_CONTEXT.archive/<feature-slug>.md`, a sibling of
 `PROJECT_CONTEXT.md` in the consuming repository. One file represents one
 feature. Because every lifecycle feature name already matches
-`[a-z0-9-]+`, `<feature-slug>` is exactly the feature name from the uniquely
-resolved `## <feature-name>` heading; do not normalize or transform it. Before
+`[a-z0-9-]+`, `<feature-slug>` is exactly the feature name from the resolved
+`## <feature-name>` heading; do not normalize or transform it. Before
 writing, reject and escalate if the slug contains `/` or `..`, starts with
 `.`, or if the canonicalized target does not remain an immediate child of the
 resolved archive directory.
@@ -348,7 +325,7 @@ exists, stop and escalate rather than overwrite or merge it.
 
 ### Lossless move and pointer
 
-Using the uniquely resolved exact heading required above, move the entire
+Using the resolved exact heading required above, move the entire
 active `## <feature-name>` section, from its heading through
 the line before the next level-two heading (or end of file), verbatim into the
 archive file. This includes all resolution metadata, `#### Current state`, and

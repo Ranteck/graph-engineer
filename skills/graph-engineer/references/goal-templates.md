@@ -55,10 +55,9 @@ Before this goal may complete after VERIFY passes, execute the terminal
 archival transition in references/context-lifecycle.md. If archival is
 unauthorized or any slug, path, hash, identity, or archive-consistency check
 fails, stop and report that escalation instead of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -97,10 +96,9 @@ Before this goal may complete after VERIFY passes, execute the terminal
 archival transition in references/context-lifecycle.md. If archival is
 unauthorized or any slug, path, hash, identity, or archive-consistency check
 fails, stop and report that escalation instead of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -129,10 +127,9 @@ Before this goal may complete after VERIFY passes, execute the terminal
 archival transition in references/context-lifecycle.md. If archival is
 unauthorized or any slug, path, hash, identity, or archive-consistency check
 fails, stop and report that escalation instead of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -161,10 +158,9 @@ Before this goal may complete after VERIFY passes, execute the terminal
 archival transition in references/context-lifecycle.md. If archival is
 unauthorized or any slug, path, hash, identity, or archive-consistency check
 fails, stop and report that escalation instead of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -206,10 +202,9 @@ reference's bracketed HEAD/clean-tree, composite-record, and exact staged-diff
 no-op finalization and skip archival. If either
 finalization cannot complete safely, stop and report the escalation instead
 of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure (timeout,
 out-of-memory, read-only filesystem, or a missing command/dependency), or if
 PRE-FLIGHT aborts for a dirty working tree, wrong branch, or no usable safety
@@ -333,10 +328,9 @@ Before this goal may complete after VERIFY passes, execute the terminal
 archival transition in references/context-lifecycle.md. If archival is
 unauthorized or any slug, path, hash, identity, or archive-consistency check
 fails, stop and report that escalation instead of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure
 (timeout, out-of-memory, read-only filesystem, or a missing command/
 dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,
@@ -499,10 +493,9 @@ reference's bracketed HEAD/clean-tree, composite-record, and exact staged-diff
 no-op finalization and skip archival. If either
 finalization cannot complete safely, stop and report the escalation instead
 of ending as successful.
-Outside the explicit new-feature bootstrap exception, stop and report if
-exact-one-feature-heading resolution fails. At any node where the active
-feature section exists, also stop and report if the mandatory Current-state
-sentinel/count/order or forbidden-heading validation fails.
+At any node where the active feature section exists, stop and report if the
+mandatory Current-state sentinel/count/order or forbidden-heading validation
+fails.
 At any node, stop and report immediately on an environmental failure
 (timeout, out-of-memory, read-only filesystem, or a missing command/
 dependency), or if PRE-FLIGHT aborts for a dirty working tree, wrong branch,

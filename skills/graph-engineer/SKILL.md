@@ -347,18 +347,15 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    exists, stop before IMPL or the initial refactor-only CRITIQUE. In
    autonomous `/goal` runs, treat this as an escalation condition, never a
    silent skip. `PROJECT_CONTEXT.md` is Claude's only ordinary writable
-   file-content artifact across the cycle. For an existing feature,
-   PRE-FLIGHT writes this QUALITY GATE resolution metadata and the
-   `### Backend` resolution; in refactor-only (there is no SPEC to defer to),
-   it writes `### Critique assurance` too. For a valid brand-new full-cycle
-   feature whose exact heading count is zero—or whose `PROJECT_CONTEXT.md`
-   file is absent—PRE-FLIGHT resolves Quality gate and Backend but defers
-   their file write: SPEC creates the file when needed, creates the one
-   heading, and persists those resolutions with the contract. In the full
-   8-node write cycle, PRE-FLIGHT only *evaluates* elevated-assurance triggers
-   here; SPEC finalizes and persists that resolution once the actual contract
-   exists. Claude never edits implementation files. The sole additional
-   file-content path is the terminal, atomic archival move to
+   file-content artifact across the cycle: PRE-FLIGHT writes this QUALITY
+   GATE resolution metadata and the `### Backend` resolution, and — see
+   immediately below — writes `### Critique assurance` too, but only in
+   refactor-only (there is no SPEC there to defer to). In the full 8-node
+   write cycle, PRE-FLIGHT only *evaluates* elevated-assurance triggers here;
+   it writes nothing for `### Critique assurance` yet — SPEC is what finalizes
+   and persists that resolution, once the actual contract exists to evaluate
+   triggers against. Claude never edits implementation files. The sole
+   additional file-content path is the terminal, atomic archival move to
    `PROJECT_CONTEXT.archive/<feature-slug>.md`; it is not available during an
    active cycle. Follow
    `references/context-lifecycle.md` for that narrow exception.
@@ -407,19 +404,13 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    touch any ref but the branch tip.
 
 1. **SPEC** (Claude, cheap) — Write the component's contract into
-   `PROJECT_CONTEXT.md` in the active repo: what it does, interfaces,
-   inputs/outputs, constraints. For a valid brand-new feature, SPEC is the
-   full-cycle bootstrap point: zero exact headings means create exactly one,
-   and if the file itself is absent, create the file and section together.
-   Creating the file does not separately create or resolve the heading. For
-   an existing feature, use the ordinary exact-one resolution rule.
-   `PROJECT_CONTEXT.md` is Claude's only ordinary writable file-content
-   artifact while the cycle is active: PRE-FLIGHT normally writes the
-   `### Quality gate` and `### Backend` resolution metadata there; when SPEC
-   performs new-feature bootstrap, it persists PRE-FLIGHT's resolved values
-   in the new section. SPEC also writes the feature contract and finalizes
-   `### Critique assurance` there (see immediately below). The orchestrating
-   Claude never edits implementation files.
+   `PROJECT_CONTEXT.md` in the active repo (create it if missing): what it
+   does, interfaces, inputs/outputs, constraints. `PROJECT_CONTEXT.md` is
+   Claude's only ordinary writable file-content artifact while the cycle is
+   active: PRE-FLIGHT writes the `### Quality gate` and `### Backend`
+   resolution metadata there, and SPEC writes the feature contract and
+   finalizes `### Critique assurance` there (see immediately below). The
+   orchestrating Claude never edits implementation files.
 
    In the full 8-node write cycle (not refactor-only), re-evaluate the
    elevated-assurance triggers here against the actual contract just written
@@ -440,15 +431,11 @@ first CRITIQUE, which precedes any IMPL or REFACTOR write.
    contaminating or being contaminated by an unrelated feature's contract
    in the same file. The feature name must match lowercase ASCII kebab-case
    `[a-z0-9-]+`; reject and escalate before writing a heading if it does not.
-   Outside SPEC's one initial full-cycle bootstrap—or refactor-only
-   PRE-FLIGHT's corresponding initial scaffolding bootstrap—require exactly
-   one exact `## <feature-name>` heading in the whole file. A missing file,
-   zero matches, or multiple matches then stop and escalate before sentinel
-   validation, extraction, or dispatch. The bootstrap exception accepts zero
-   matches only to create exactly one section and must immediately establish
-   exact-one uniqueness. Follow `references/context-lifecycle.md`'s
-   authoritative name grammar, file/heading creation interaction, and
-   heading-identity rule.
+   Resolve the active feature heading by exact match to
+   `## <feature-name>`. Feature names are unique by convention rather than a
+   mechanically enforced heading-count invariant; follow
+   `references/context-lifecycle.md` for that disclosed assumption and the
+   authoritative heading-resolution rule.
 
    **Bounded current state and history.** Read and write the full active
    feature section. Keep its contract under `#### Current state`, rewrite that
