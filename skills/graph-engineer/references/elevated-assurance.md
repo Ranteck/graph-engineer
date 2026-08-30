@@ -191,10 +191,18 @@ path bytes, `<path>\0<sha256-of-file-content>\0`. The recipe deliberately
 reuses `quality-gate-detection.md`'s 500-file/50-MiB limits and fails closed on
 non-regular paths or command errors. Do not reimplement its delimiters, newline
 handling, sorting, or digest extraction. SHA-256 is collision-resistant, not
-collision-proof, but sufficient for detecting the accidental drift this
-protocol targets. Accept the printed digest only when the one-liner exits zero
-and stdout is exactly one 64-character lowercase hexadecimal value plus its
-line ending; discard any stdout from a nonzero run.
+collision-proof, but sufficient for sampled comparisons within the scoped
+Git-visible state this protocol measures. Accept the printed digest only when
+the one-liner exits zero and stdout is exactly one 64-character lowercase
+hexadecimal value plus its line ending; discard any stdout from a nonzero run.
+
+That scope is exact: Git-tracked content and the index/working-tree state
+represented by the commands above, plus regular non-symlink files that are
+initially untracked and not ignored. The digest does **not** cover ignored files
+(including an ignored `.env`), nested submodule working-tree contents,
+repository metadata, or filesystem state outside Git's view. A matching digest
+therefore establishes only that this scoped Git-visible state matched at the
+two sampling points.
 
 Digest values already recorded in the `project-context-scoped-disclosure`
 cycle before this recipe was pinned used an ad hoc encoding and are not
@@ -255,13 +263,14 @@ against the digest captured for that step:
   proven either way, treat that identically to a mismatch: stop and
   escalate.** Absence of proof is not proof of a match.
 
-This is sampled identity validation, not an immutability guarantee: a
+This is sampled, scoped identity validation, not an immutability guarantee: a
 before/after digest comparison cannot detect a write-then-restore race that
 happens entirely inside the gap between two checks and leaves the digest
-unchanged. An actual immutable snapshot (e.g. a dedicated worktree or a
-locked checkout) would be required to close that specific gap; this protocol
-does not claim to. Treat it as "no undetected persistent drift," not "no
-possible interference."
+unchanged. Nor can it detect persistent mutations in the excluded ignored,
+submodule-internal, repository-metadata, or outside-Git state. An actual
+immutable and broader snapshot would be required to close those gaps; this
+protocol does not claim to. Treat a match as "no detected persistent drift in
+the measured Git-visible state," not "no possible interference or mutation."
 
 1. **`correctness-contracts`** — contract compliance, core invariants,
    inputs/outputs/errors, acceptance criteria, incorrect assumptions, missing

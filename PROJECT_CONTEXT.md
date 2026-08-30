@@ -547,7 +547,10 @@ feature's section in `PROJECT_CONTEXT.md`:
      completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch, and
      REFACTOR round. Each entry: round id (matching the existing checkpoint
      commit round labels, e.g. `IMPL-r00`, `REFACTOR-r04`), node, actor/
-     backend, commit ref if a checkpoint was made, and a one-line outcome.
+     backend, commit ref if a checkpoint was made, and a one-line outcome. An
+     entry committed inside its own checkpoint uses
+     `pending-this-checkpoint`; the next context-write batch backfills the
+     actual short hash before adding new round or archival content.
      Design rationale, rejected alternatives, actor refusals, review
      conclusions, and false-positive justifications belong in the applicable
      entry's `Decision notes`. Existing feature sections are grandfathered;
@@ -569,6 +572,9 @@ feature's section in `PROJECT_CONTEXT.md`:
      state` heading line through the byte before the next `####`, `###`, or
      `##` ATX heading in document order. Heading-like lines inside an open
      backtick or tilde fence do not terminate the range.
+   - If the scan reaches EOF with an unclosed fence, or finds no qualifying
+     heading before EOF at all, extraction aborts and stops/escalates. EOF is
+     never used as an inferred boundary and the range is never widened.
    - It preserves the range byte-for-byte and wraps it in a dedicated backtick
      fence one byte longer than the longest backtick run after up to three
      leading spaces on any extracted line (minimum three).
@@ -610,14 +616,14 @@ feature's section in `PROJECT_CONTEXT.md`:
      `Cycle-State: COMPLETE` instead of `CHECKPOINT`. Before either terminal
      edge declares DONE, `SKILL.md` explicitly invokes this transition.
    - **Zero-REFACTOR refactor-only exception**: when the first CRITIQUE finds no
-     valid findings, capture the canonical artifact-identity digest at that
-     accepted result before appending the prospective no-op path's CRITIQUE log
-     entries, and defer those entries until the comparison. The final clean
-     pass may skip archival only when there were zero REFACTOR rounds and an
-     immediate recomputation exactly matches that captured digest. Mismatch or
-     indeterminate comparison stops and escalates. The bounded final context
-     commit stages exactly `PROJECT_CONTEXT.md`; any other staged path also
-     stops and escalates.
+     valid findings, capture digest #1 before any file write. DEBATE confirms
+     the no-op result as pure reasoning, without persisting either entry. At the
+     final clean pass, with zero REFACTOR rounds, recompute digest #2 immediately
+     before any write and require an exact match. Mismatch or an indeterminate
+     comparison stops and escalates. Only after a match, append all deferred
+     CRITIQUE and DEBATE entries in chronological order in one batch and make
+     the bounded final context commit, staging exactly `PROJECT_CONTEXT.md`;
+     any other staged path also stops and escalates.
    - **Slug/path safety**: derive `<feature-slug>` deterministically from the
      feature heading using lowercase kebab-case matching `[a-z0-9-]+`. Reject
      `/`, `..`, a leading `.`, an empty slug, any canonicalized path outside
@@ -671,7 +677,10 @@ feature's section in `PROJECT_CONTEXT.md`:
    `elevated-assurance.md` defines one canonical artifact digest as a literal
    shell recipe over NUL-delimited HEAD, porcelain status, binary diff, and
    sorted untracked-file path/content hashes. Both sides of every comparison
-   must use that recipe.
+   must use that recipe. Its drift coverage is limited to Git-visible tracked
+   content and index/working-tree state plus initially untracked, non-ignored
+   regular files; it does not cover ignored files, submodule internals, or
+   filesystem state outside Git's view.
 
 **Explicitly out of scope for this feature**: lossy compaction or summarization
 of `#### Round log`; one-live-file-per-active-feature layout; retrofitting
@@ -771,7 +780,7 @@ zero-REFACTOR no-op, or the corresponding escalation.
 
 - **Node**: REFACTOR
 - **Actor/backend**: Codex / `backend: codex`
-- **Commit**: none
+- **Commit**: `06782cc`
 - **Outcome**: Closed the residual current-state, zero-REFACTOR, prompt-framing,
   and artifact-digest specification gaps.
 - **Decision notes**: The no-op path defers its own CRITIQUE log writes until

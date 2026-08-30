@@ -209,8 +209,12 @@ For ordinary single-reviewer CRITIQUE calls — standard mode, reinjections, and
 the exit challenger — capture the digest immediately before dispatch,
 recompute it after the reply, and accept the review only if they match exactly.
 A mismatch, or inability to construct or compare either digest, is a
-stop-and-escalate condition. This is mutation detection, not a sandbox or
-prevention guarantee.
+stop-and-escalate condition. This detects drift only in the canonical recipe's
+scoped Git-visible state: tracked content and index/working-tree state, plus
+initially-untracked-but-not-ignored regular files. It does not cover ignored
+files, nested submodule working-tree contents, repository metadata, or
+filesystem state outside Git's view. It is not a sandbox or prevention
+guarantee.
 
 Because CRITIQUE is always a local `Explore` call under
 `claude-writer:<account-alias>`, use the identical per-call digest rule just
@@ -290,9 +294,9 @@ chosen because its tool definition excludes the direct editor tools `Edit`,
 `Write`, and `NotebookEdit` (its excluded set also names `Agent`, `Artifact`,
 and `ExitPlanMode`). That is a tool-list restriction, not a sandbox guarantee:
 `Explore` still has Bash/shell access and could mutate files indirectly. The
-mandatory before/after artifact-identity comparison above detects drift; it
-does not make the call structurally read-only or comparable to Codex's
-OS/process sandbox.
+mandatory before/after artifact-identity comparison above detects only the
+scoped Git-visible drift defined there; it does not make the call structurally
+read-only or comparable to Codex's OS/process sandbox.
 
 Every reviewer prompt contains the active feature's byte-exact `#### Current
 state` text inline in the outer fence required by `context-lifecycle.md`, plus
@@ -410,8 +414,9 @@ artifact.
 
 A confirmed cross-session identity plus a matching local artifact digest does
 not prove the target session operated on the orchestrator's actual repository,
-worktree, branch, or HEAD. The digest only detects drift in the orchestrator's
-own local tree, not what the remote session actually touched; this design has
+worktree, branch, or HEAD. The digest samples only the orchestrator's scoped
+Git-visible local state described above, not ignored files, submodule internals,
+outside-Git state, or what the remote session actually touched; this design has
 no mechanism to verify the target's workspace identity.
 
 This backend also cannot run elevated assurance: one retained target session

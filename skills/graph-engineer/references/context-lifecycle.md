@@ -50,7 +50,7 @@ level-three resolution blocks in their existing form and position, then splits
 
 - **Node**: <SPEC | IMPL | CRITIQUE | DEBATE | REFACTOR>
 - **Actor/backend**: <orchestrator or selected backend>
-- **Commit**: <checkpoint ref, or `none`>
+- **Commit**: <checkpoint ref, `pending-this-checkpoint`, or `none`>
 - **Outcome**: <one line>
 - **Decision notes**: <optional, concise round-scoped rationale>
 ```
@@ -72,8 +72,21 @@ after each completed SPEC revision, IMPL, CRITIQUE pass, DEBATE triage batch,
 and REFACTOR round. Use the cycle's stable round labels so entries align with
 checkpoint commits—for example, `IMPL-r00` and `REFACTOR-r04`. A node without
 its own checkpoint still uses the applicable cycle round in its id and records
-`Commit: none`. QUALITY GATE and VERIFY do not add round-log entries; their
-results remain represented by checkpoint or terminal-commit evidence.
+`Commit: none`. When an entry is written in the same commit that creates the
+checkpoint it describes, record the literal `Commit: pending-this-checkpoint`;
+the commit cannot contain its own not-yet-created hash.
+
+At the very next context-write opportunity for that feature—whether the next
+round-log append or terminal archival—make backfilling the pending field with
+the actual short hash the first edit in that bounded context-write batch,
+before adding the new round entry or archival content. Resolve and verify that
+hash against the feature's stable round label and checkpoint commit message;
+if it cannot be identified unambiguously, stop and escalate before making the
+new entry or archival change rather than guessing or retaining
+`pending-this-checkpoint`. `Commit: none` is reserved for a round for which no
+checkpoint commit was made. QUALITY GATE and VERIFY do not add round-log
+entries; their results remain represented by checkpoint or terminal-commit
+evidence.
 
 Each entry records its round id, node, actor/backend, checkpoint ref when one
 was made, and a one-line outcome. Keep any design-decision rationale, rejected
@@ -155,10 +168,16 @@ the active feature's `#### Current state` text by this exact rule:
    a run at least as long as the opener and followed only by spaces or tabs,
    closes it. Heading-like lines while a fence is open never delimit the
    subsection.
-3. Preserve every extracted byte exactly, including leading/trailing blank
+3. Fail closed unless the scan finds a qualifying boundary heading while no
+   fence is open. If EOF is reached with a fence still open, or if no qualifying
+   level-4-or-shallower heading is found before EOF even though no fence is
+   open, abort extraction and stop and escalate. Never treat EOF as the closing
+   boundary, guess that the feature ended, consume through `#### Round log`, or
+   fall back to a wider range.
+4. Preserve every extracted byte exactly, including leading/trailing blank
    lines, internal Markdown, nested headings, and fences. Do not trim, indent,
    prefix, normalize line endings, or otherwise rewrite it.
-4. Put those bytes inside a dedicated outer backtick-fenced code block in the
+5. Put those bytes inside a dedicated outer backtick-fenced code block in the
    dispatch prompt. Choose an outer fence whose run is at least three
    backticks and one byte longer than the longest run of backticks after zero
    through three leading spaces on any extracted line; use the identical run
@@ -187,29 +206,35 @@ been met:
 - after the final DONE-clearing CRITIQUE or exit-challenger pass in
   refactor-only.
 
-There is one refactor-only no-op exception. When the first CRITIQUE finds no
-valid findings, capture the canonical artifact-identity digest defined by the
-literal recipe in `elevated-assurance.md` immediately after accepting that
-result and completing any required post-review mutation check, but before
-appending that pass's round-log entry. Defer all CRITIQUE/exit-challenger log
-appends on this prospective no-op path until the identity comparison below; do
-not make another context write between capture and comparison. If the final
-DONE-clearing pass is then reached with **zero REFACTOR rounds** (after an exit
-challenger too, when elevated mode requires one), recompute the digest
-immediately before finalization and require exact equality with that captured
-value. A mismatch or an inability to construct or compare either digest means
-the artifact changed outside this cycle's tracked writer rounds: stop and
-escalate instead of taking the no-op path.
+There is one refactor-only no-op exception, with this strict order:
 
-Only after that equality check proves no drift does the absence of finished
-implementation work justify skipping archival. Confirm the PRE-FLIGHT metadata
-commit described below exists, append the completed CRITIQUE entry or entries
-under `#### Round log`, and make a separate bounded context-only completion
-commit. Stage exactly `PROJECT_CONTEXT.md` and verify the staged path set
-contains that one path and nothing else immediately before committing; any
-extra or missing staged path is a stop-and-escalate condition. Then confirm the
-tree is clean and enter DONE. Do not treat the absence of a finished-work
-checkpoint as an error in this exact identity-matched zero-REFACTOR case.
+1. The moment the first CRITIQUE reports no valid findings and its required
+   post-review mutation check succeeds, capture digest #1 with the canonical
+   artifact-identity recipe in `elevated-assurance.md`. This happens before any
+   resulting write to `PROJECT_CONTEXT.md`.
+2. DEBATE confirms the no-valid-findings judgment as pure reasoning. Do not yet
+   persist either the CRITIQUE entry or the DEBATE entry, and make no other
+   context write. The same deferral applies to any required exit-challenger
+   CRITIQUE/DEBATE pair on this prospective no-op path.
+3. If the final DONE-clearing pass is reached with **zero REFACTOR rounds**
+   (after an exit challenger too, when elevated mode requires one), recompute
+   digest #2 immediately before writing anything to `PROJECT_CONTEXT.md` and
+   require exact equality with digest #1. No file write may occur between the
+   first capture and this comparison.
+4. A mismatch, or inability to construct or compare either digest, means the
+   artifact changed outside this cycle's tracked writer rounds: stop and
+   escalate instead of taking the no-op path.
+5. Only after an exact match, confirm the PRE-FLIGHT metadata commit described
+   below exists and append **all** deferred round-log entries in one batch, in
+   their actual chronology: each CRITIQUE entry followed by its DEBATE entry.
+   Then make the separate bounded context-only completion commit. Stage exactly
+   `PROJECT_CONTEXT.md` and verify the staged path set contains that one path
+   and nothing else immediately before committing; any extra or missing staged
+   path is a stop-and-escalate condition.
+
+After that commit, confirm the tree is clean and enter DONE. Do not treat the
+absence of a finished-work checkpoint as an error in this exact
+identity-matched zero-REFACTOR case.
 
 The archive path is
 `PROJECT_CONTEXT.archive/<feature-slug>.md`, a sibling of
