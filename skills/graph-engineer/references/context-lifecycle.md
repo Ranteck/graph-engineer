@@ -129,6 +129,14 @@ the working tree, conversation evidence, and any existing commit before
 retrying, and stop and escalate if they cannot be reconciled. A checkpoint
 commit missing its corresponding composite record, or a duplicate round id,
 is a protocol inconsistency; do not silently backfill, renumber, or proceed.
+If a checkpoint commit is later discovered to lack its required composite
+record, do not add that record in a later commit as though the original binding
+had been atomic; the gap is permanent in immutable history. For the single
+historical exception adopted with this rule, the discovering writer iteration
+must name the violating commit(s) and missing record(s) in its own same-commit
+composite record. This is not a reusable backfill mechanism: any recurrence
+after this rule is adopted is a hard stop-and-escalate-to-the-user condition,
+not another documented exception.
 If checkpoint commits are not authorized, this model cannot close a writer
 iteration atomically; stop and escalate rather than claim that the iteration
 was durably recorded.

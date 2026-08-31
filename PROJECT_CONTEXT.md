@@ -989,3 +989,22 @@ corresponding escalation.
 - **Decision notes**: Grandfathering recognition now follows closed-list
   feature identity before upgrade eligibility is considered; sentinel absence
   or section shape alone cannot make a section an upgrade candidate.
+
+##### REFACTOR-r13
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found that the REFACTOR-r11 checkpoint commit lacked
+  its own composite record and REFACTOR-r12 backfilled that record in a later
+  commit instead of the same one; also found that REFACTOR-r12 itself lacked
+  its own composite record.
+- **DEBATE classifications**: Both findings were valid High findings.
+- **Resulting writer work**: Added the non-repeatable historical-recovery
+  clause to `context-lifecycle.md` and this REFACTOR-r13 record; both land
+  together in the same checkpoint commit.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: The REFACTOR-r11 gap in `4ed54388` and REFACTOR-r12 gap
+  in `95d652bc` are permanent, accepted historical facts because git history
+  is immutable and never rewritten. This is the one-time use of the new
+  exception clause; any future checkpoint missing its own composite record is
+  a hard stop and escalation to the user, not a repeatable pattern.
