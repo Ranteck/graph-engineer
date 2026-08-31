@@ -245,14 +245,15 @@ the built-in `/goal` command; confirm it's available in your installed
 build, since this repository doesn't currently pin a verified Claude Code
 version.
 
-**Source-inspected against `openai-codex` plugin v1.0.6.** The routing,
-flag, and sandbox assumptions (single `codex:codex-rescue` entry point,
-`--write` / `--resume-last` flag behavior, sandbox enforcement of read-only
-CRITIQUE calls) were checked against that version's installed plugin
-sources — not exercised end-to-end (see Status above). Installing via the
-commands above pulls whatever version is current, which may not be v1.0.6;
-check your installed version and treat anything other than v1.0.6 as
-compatibility-unverified.
+**Exercised end-to-end against `openai-codex` plugin v1.0.6.** This
+repository's real dogfooding run exercised the routing, flag, and sandbox
+assumptions (single `codex:codex-rescue` entry point, `--write` /
+`--resume-last` flag behavior, and sandbox enforcement of read-only CRITIQUE
+and exit-challenger calls), including recovery after a resumed `--write`
+attempt was rejected by the read-only sandbox. This verification is specific
+to v1.0.6. Installing via the commands above pulls whatever version is
+current, which may not be v1.0.6; check your installed version and treat
+anything other than v1.0.6 as compatibility-unverified.
 
 ## Installation
 

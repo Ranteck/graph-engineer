@@ -1035,3 +1035,23 @@ corresponding escalation.
 - **Decision notes**: A fresh exit-challenger re-run is still required after
   this fix before VERIFY, per `elevated-assurance.md`'s rule that REFACTOR
   after an exit challenger requires one more fresh challenger pass.
+
+##### REFACTOR-r15
+
+- **Actors/backend**: Fresh cold Codex exit challenger, user-confirmed triage,
+  and Codex writer using the documented fresh-session recovery / `backend:
+  codex`
+- **CRITIQUE outcome**: A fresh exit-challenger run after r14 at HEAD
+  `477e3497` found that README.md's plugin-verification paragraph still said
+  "not exercised end-to-end," contradicting the just-corrected Status callout
+  and this repository's own real dogfooding evidence.
+- **DEBATE classifications**: The finding was valid.
+- **Resulting writer work**: Corrected that one README.md paragraph to state
+  that the routing, flag, and sandbox assumptions were exercised end-to-end
+  against `openai-codex` plugin v1.0.6 while retaining the version-pinning
+  caveat.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: One more fresh exit-challenger re-run is still required
+  after this fix before VERIFY, per `elevated-assurance.md`'s rule. This fix
+  itself required the documented read-only-rejection recovery: the resumed
+  session rejected the write, so a fresh session was used instead.
