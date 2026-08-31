@@ -71,9 +71,12 @@ flowchart TD
 ```
 
 On the default `codex` path, every node is Claude or Codex, never a third
-agent, and every edge is state written to `PROJECT_CONTEXT.md`, not implicit
-memory — that's what makes this a graph/state-machine rather than a single
-long conversation. The local-`Explore` Claude backends' continuity
+agent. Each completed writer iteration's outcome is durably recorded in
+`PROJECT_CONTEXT.md`, so the cycle can resume from that checkpoint after a
+session restart even though within-round continuity relies on `--resume-last`
+session memory — together, those explicit transitions and durable records make
+this a graph/state-machine rather than a single long conversation. The
+local-`Explore` Claude backends' continuity
 additionally relies on the orchestrator's conversation memory; see
 [`backend-selection.md`](skills/graph-engineer/references/backend-selection.md).
 Which tool call implements each node (subagent, flags) is in the
@@ -154,7 +157,8 @@ neither is enforced by the skill unconditionally:
   remains bound by "keep working until true" and will surface the repeated
   finding rather than unilaterally stopping. Don't rely on this as an
   unconditional guarantee.
-- **A recommended total CRITIQUE cap** (3 passes in the templates below) —
+- **A recommended total CRITIQUE cap** (3 passes in the linked
+  [`goal-templates.md`](skills/graph-engineer/references/goal-templates.md)) —
   unlike the anti-loop cutoff, this isn't a distinct finding-comparison
   rule; it's a plain iteration ceiling you write into `/goal` so a string of
   *different* findings can't keep the cycle going indefinitely. Same

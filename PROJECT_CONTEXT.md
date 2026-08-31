@@ -970,3 +970,22 @@ corresponding escalation.
   heuristic, because every feature created under this lifecycle from now on
   is authored with both sentinels from the start — there is no legitimate way
   for a future non-grandfathered section to lack them.
+
+##### REFACTOR-r11
+
+- **Actors/backend**: Prior Codex reviewer, user-confirmed triage, and Codex
+  writer / `backend: codex`
+- **CRITIQUE outcome**: Found all seven canonical `/goal` templates still
+  instructed the orchestrator to "recognize a grandfathered shape that lacks
+  the lifecycle sentinels," contradicting `context-lifecycle.md`'s
+  r10-established rule that grandfathering is an exact feature-name identity
+  check against the closed list, not an inference from shape or missing
+  sentinels.
+- **DEBATE classifications**: The finding was valid.
+- **Resulting writer work**: Replaced all seven occurrences with "first check
+  whether its exact feature name is on the closed grandfathered list," changing
+  no other content in `goal-templates.md`.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: Grandfathering recognition now follows closed-list
+  feature identity before upgrade eligibility is considered; sentinel absence
+  or section shape alone cannot make a section an upgrade candidate.
