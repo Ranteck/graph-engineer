@@ -10,13 +10,12 @@ self-correcting loop instead of a single implement-and-hope pass. The split
 isn't only about token cost: it also separates roles and puts a different
 model in the arbitration path.
 
-> **Status: design-stage, adversarially reviewed, not yet dogfooded end-to-end.**
-> The 8-node cycle and the QUALITY GATE resolver below converged through
-> repeated Claude↔Codex adversarial review of the design itself. Neither has
-> been run against a real feature in a real repository yet — treat this as
-> "reviewed on paper" rather than "battle-tested." See
-> [Limitations / Risks](#limitations--risks) before running `--write` against
-> anything you care about.
+> **Status: adversarially reviewed and dogfooded end-to-end in this repository.**
+> The 8-node cycle and the QUALITY GATE resolver have now been exercised against
+> two real features in this skill's own repository, through repeated REFACTOR
+> rounds and real failure-recovery paths. Real-world validation is still limited
+> to this one repository; see [Limitations / Risks](#limitations--risks) before
+> running `--write` against anything you care about.
 
 ## What is "graph engineering"?
 

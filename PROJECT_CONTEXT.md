@@ -1008,3 +1008,30 @@ corresponding escalation.
   is immutable and never rewritten. This is the one-time use of the new
   exception clause; any future checkpoint missing its own composite record is
   a hard stop and escalation to the user, not a repeatable pattern.
+
+##### REFACTOR-r14
+
+- **Actors/backend**: Fresh cold Codex exit challenger, user-confirmed triage,
+  and prior Codex writer / `backend: codex`
+- **CRITIQUE outcome**: A fresh, cold exit-challenger review run after r13 at
+  HEAD `b9070a81` found two findings. The valid finding was that README.md's
+  status callout ("design-stage, adversarially reviewed, not yet dogfooded
+  end-to-end" and "reviewed on paper") was stale: this repository's own
+  graph-engineer skill had by then been dogfooded end-to-end across two real
+  features, `backend-selection` and `project-context-scoped-disclosure`, the
+  latter across 14 real REFACTOR rounds. The other finding claimed a
+  contradiction between PROJECT_CONTEXT.md's "prior history is never
+  reconstructed," scoped specifically to the grandfathered
+  `backend-selection` section body, and `context-lifecycle.md`'s separate
+  legacy-per-node-ledger reconstruction exception.
+- **DEBATE classifications**: One finding valid and one false positive. The
+  claimed contradiction was false: grandfathered-section body preservation
+  and the unrelated legacy-per-node-ledger compatibility mechanism are
+  disjoint, non-contradictory provisions. This project's own r04 round already
+  used the latter once; otherwise it remains a compatibility path for other
+  consuming repositories.
+- **Resulting writer work**: Corrected README.md's status callout only.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: A fresh exit-challenger re-run is still required after
+  this fix before VERIFY, per `elevated-assurance.md`'s rule that REFACTOR
+  after an exit challenger requires one more fresh challenger pass.
