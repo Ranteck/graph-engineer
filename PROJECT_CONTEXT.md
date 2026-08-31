@@ -1074,3 +1074,23 @@ corresponding escalation.
 - **Checkpoint**: locate-by-feature-and-round
 - **Decision notes**: One more fresh exit-challenger re-run is still required
   before VERIFY.
+
+##### REFACTOR-r17
+
+- **Actors/backend**: Fresh cold Codex exit challenger, user-confirmed triage,
+  and fresh Codex writer / `backend: codex`
+- **CRITIQUE outcome**: A fresh exit-challenger run after r16 at HEAD
+  `64acfb8` found that r16's own fix to goal-templates.md's canonicalization
+  digest timing introduced a regression: the word "only" in "recompute only
+  after canonicalization completes" dropped the mandatory before-dispatch
+  comparison checkpoint required by elevated-assurance.md.
+- **DEBATE classifications**: The finding was valid.
+- **Resulting writer work**: Restored both required checkpoints—before
+  canonicalization dispatch, right after lens termination, and after
+  canonicalization completes—while keeping r16's correct reused digest as the
+  reference value.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: This was a genuine regression introduced by r16's own
+  prior fix and caught by the very next cold exit-challenger pass,
+  demonstrating the value of the fresh-eyes gate. One more fresh
+  exit-challenger re-run is still required before VERIFY.

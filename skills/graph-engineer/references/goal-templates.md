@@ -339,10 +339,14 @@ and compare it once after all 3 terminate, before fan-in, not per lens. For
 each ordinary single-reviewer CRITIQUE call, reinjection, or exit challenger,
 capture the digest immediately before dispatch and recompute and compare it
 immediately after completion. For backend: codex canonicalization, reuse the
-same digest captured before the initial 3-lens dispatch as the before reference
-instead of capturing a fresh baseline, and recompute only after canonicalization
-completes to compare against it; any mismatch means the reviewed artifact is no
-longer current. If the
+same digest captured before the initial 3-lens dispatch as the reference value
+instead of capturing a fresh baseline. Immediately after all 3 lenses terminate
+and before fan-in/canonicalization dispatch, recompute the digest and compare it
+against that reference; mismatch means stop and escalate because the artifact
+drifted before canonicalization could start. Immediately after canonicalization
+completes, recompute the digest again and compare it against the same reference;
+mismatch means stop and escalate because the artifact drifted during the
+canonicalization call. If the
 elevated-assurance
 resolution is missing or ambiguous, any required lens fails to return, that
 late-lens recovery itself cannot establish terminal state or ledger completeness, an
@@ -431,9 +435,14 @@ all 3 and recompute and compare it once after all 3 terminate, before fan-in,
 not per lens. For each ordinary single-reviewer CRITIQUE call or reinjection,
 capture the digest immediately before dispatch and recompute and compare it
 immediately after completion. For backend: codex canonicalization, reuse the
-same digest captured before the initial 3-lens dispatch as the before reference
-instead of capturing a fresh baseline, and recompute only after canonicalization
-completes to compare against it. If any
+same digest captured before the initial 3-lens dispatch as the reference value
+instead of capturing a fresh baseline. Immediately after all 3 lenses terminate
+and before fan-in/canonicalization dispatch, recompute the digest and compare it
+against that reference; mismatch means stop and escalate because the artifact
+drifted before canonicalization could start. Immediately after canonicalization
+completes, recompute the digest again and compare it against the same reference;
+mismatch means stop and escalate because the artifact drifted during the
+canonicalization call. If any
 of the 3 lenses fails to return, that recovery itself cannot establish
 terminal state or ledger completeness, an artifact-identity digest mismatch
 is detected at any of those checkpoints, or the digest cannot be
@@ -511,10 +520,14 @@ and compare it once after all 3 terminate, before fan-in, not per lens. For
 each ordinary single-reviewer CRITIQUE call, reinjection, or exit challenger,
 capture the digest immediately before dispatch and recompute and compare it
 immediately after completion. For backend: codex canonicalization, reuse the
-same digest captured before the initial 3-lens dispatch as the before reference
-instead of capturing a fresh baseline, and recompute only after canonicalization
-completes to compare against it; any mismatch means the reviewed artifact is no
-longer current. If the
+same digest captured before the initial 3-lens dispatch as the reference value
+instead of capturing a fresh baseline. Immediately after all 3 lenses terminate
+and before fan-in/canonicalization dispatch, recompute the digest and compare it
+against that reference; mismatch means stop and escalate because the artifact
+drifted before canonicalization could start. Immediately after canonicalization
+completes, recompute the digest again and compare it against the same reference;
+mismatch means stop and escalate because the artifact drifted during the
+canonicalization call. If the
 elevated-assurance
 resolution is missing or ambiguous, any required lens fails to return, that
 late-lens recovery itself cannot establish terminal state or ledger completeness, an
