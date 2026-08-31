@@ -27,9 +27,11 @@ design.
 - The **Codex plugin for Claude Code** is official and owned by OpenAI:
   [github.com/openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc),
   marketplace name `openai-codex`, plugin `codex`, author `OpenAI`. This
-  skill orchestrates that plugin's real commands (`rescue`, `review`,
-  `adversarial-review`, `status`, `result`, `cancel`) — it does not
-  reimplement or replace them.
+  skill's autonomous cycle exclusively invokes `codex:codex-rescue`, the only
+  plugin command without `disable-model-invocation`. The plugin also exposes
+  `review`, `adversarial-review`, `status`, `result`, and `cancel` for
+  human/manual use; this skill does not invoke those five programmatically and
+  does not reimplement or replace any of the commands.
 - **`/goal`** is a genuine Claude Code built-in (confirmed present in the CLI
   binary): `/goal [<condition> | clear]`, "Set a goal — keep working until
   the condition is met." It's a stop-gate evaluated when the model tries to

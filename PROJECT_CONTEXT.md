@@ -1055,3 +1055,22 @@ corresponding escalation.
   after this fix before VERIFY, per `elevated-assurance.md`'s rule. This fix
   itself required the documented read-only-rejection recovery: the resumed
   session rejected the write, so a fresh session was used instead.
+
+##### REFACTOR-r16
+
+- **Actors/backend**: Fresh cold Codex exit challenger, user-confirmed triage,
+  and fresh Codex writer / `backend: codex`
+- **CRITIQUE outcome**: A fresh exit-challenger run after r15 at HEAD
+  `8101f76` found four valid issues: README.md overclaimed disclosure
+  confinement; README.md's diagram contradicted its prose about the
+  debatable-reinjection loop; goal-templates.md's canonicalization digest
+  timing risked silently re-baselining against drifted state; and sources.md
+  overstated the plugin commands this skill invokes.
+- **DEBATE classifications**: All four findings were valid.
+- **Resulting writer work**: Corrected README.md's disclosure wording and
+  diagram edge, required every elevated goal template's Codex canonicalization
+  to reuse the initial lens-sweep digest as its before reference, and aligned
+  sources.md with the single `codex:codex-rescue` programmatic entry point.
+- **Checkpoint**: locate-by-feature-and-round
+- **Decision notes**: One more fresh exit-challenger re-run is still required
+  before VERIFY.

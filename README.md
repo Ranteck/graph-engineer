@@ -62,7 +62,7 @@ flowchart TD
     QG -- pass --> CRIT["4 CRITIQUE<br/>Codex, read-only"]
     CRIT --> DEBATE{"5 DEBATE<br/>Claude triages"}
     DEBATE -- valid --> REFACTOR["6 REFACTOR<br/>Codex --resume-last --write"]
-    DEBATE -- debatable --> CRIT
+    DEBATE -- "debatable: internal Codex round-trip" --> DEBATE
     REFACTOR --> QG
     DEBATE -- "no findings" --> VERIFY{"7 VERIFY<br/>functional tests"}
     VERIFY -- fail --> CRIT
@@ -105,10 +105,11 @@ for the resolver order, safety checks, cache schema, bundled-command split,
 retry cap, and escalation rules.
 
 Active feature entries keep bounded truth under `#### Current state` and an
-append-only audit history under `#### Round log`. Each node receives only its
-default disclosure—fresh elevated lenses and the exit challenger never see
-the log—and, when checkpoint commits are authorized, a successfully completed
-write cycle atomically moves the full section to
+append-only audit history under `#### Round log`. Each node is dispatched under
+its default disclosure policy—fresh elevated lenses and the exit challenger
+are instructed not to read the log—and, when checkpoint commits are
+authorized, a successfully completed write cycle atomically moves the full
+section to
 `PROJECT_CONTEXT.archive/<feature-slug>.md` (otherwise it escalates without a
 partial move). See the complete
 [`context-lifecycle.md` protocol](skills/graph-engineer/references/context-lifecycle.md)
