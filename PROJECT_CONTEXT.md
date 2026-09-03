@@ -118,6 +118,8 @@ in effect this round).**
 
 ### Feature contract
 
+#### Current state
+
 **What it does.** Adds a per-cycle, opt-in **backend selection** for the
 writer/reviewer role that today is always Codex (node 2 IMPL, node 6
 REFACTOR, and node 4 CRITIQUE). Codex remains the unconditional default —
@@ -455,5 +457,7 @@ actual workspace/repository identity beyond the confirmed session identity
 and local artifact digest (a known, disclosed limitation — see
 `claude:<account-alias>` and `claude-writer:<account-alias>` above — not
 something this cycle attempts to solve).
+
+#### Round log
 
 ## project-context-scoped-disclosure — split active feature sections into a bounded Current state and an append-only Round log, added node-scoped disclosure defaults for reviewers/writers, and added a terminal archival transition for completed features; completed 2026-08-31; archive: `PROJECT_CONTEXT.archive/project-context-scoped-disclosure.md`; archive-sha256: `64a2826823076e1bb0bdac2b948c1b4ceadd23137492bb0612a641b9886b1a05`; finished-work checkpoint: `be1cd57`
