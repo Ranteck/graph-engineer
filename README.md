@@ -554,6 +554,22 @@ claims live.
   corroboration is recorded as metadata, never a fourth verdict. If you want
   true cross-model review, you can still drive it by hand outside this
   skill; it's just not what the automated cycle does.
+- **Idea considered and deferred: parallel independent multi-feature cycles.**
+  Today each graph-engineer cycle is scoped to exactly one feature:
+  `PROJECT_CONTEXT.md` namespaces every feature under its own section, and SPEC
+  requires a cycle to read and write only that section so contracts cannot
+  contaminate one another. Useful parallelism already exists within that
+  feature — elevated assurance runs 3 independent lenses concurrently and
+  reconciles them through fan-in — but not across features. If a `/goal` names
+  multiple genuinely independent features, the skill still runs one complete
+  cycle at a time; it does not launch N concurrent sub-cycles, each internally
+  ordered writer → reviewer → arbiter, and merge them into one final report.
+  That design was evaluated and deliberately deferred rather than implemented
+  speculatively: it needs a sound protocol for isolating concurrently active
+  `PROJECT_CONTEXT.md` sections, a shared Codex call budget across sub-cycles,
+  and final-report fan-in. Those choices should be driven by a real
+  multi-feature use case. This is recorded as a deliberately deferred design
+  idea, not a scheduled roadmap item.
 - **`/goal` is a per-turn stop-gate, not a scheduler.** It keeps one turn
   alive until the condition is met; it doesn't survive closing the session.
   Some Claude Code environments offer `/loop` for unattended runs across
