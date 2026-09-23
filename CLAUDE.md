@@ -50,6 +50,23 @@ consistent across all of them:
   resume-by-thread-ID could relax that barrier's requirements, but don't assume it
   without re-verifying the source.
 
+Validation after any non-trivial doc edit, and before committing: run
+`/invariant-check` (dispatches the `doc-consistency-reviewer` subagent; report-only).
+Hooks in `.claude/settings.json` also run automatically on Edit/Write:
+`check-doc-invariants.sh` *warns* on pin/cycle/entry-point drift, and
+`guard-goal-template-duplication.sh` *blocks* (exit 2) any edit that embeds the
+`elevated-write-goal` markers in `README.md` — a block there is intended, not a bug.
+
+## Other repo files
+
+- `CLAUDE.md` and `AGENTS.md` mirror each other (identical content except the
+  title, the guidance-target line, and the intro's host name). Apply every edit to both.
+- This repo is developed *with* graph-engineer itself: `PROJECT_CONTEXT.md` and
+  `PROJECT_CONTEXT.archive/` are live cycle state (pointer lines carry archive
+  sha256 hashes). Don't hand-edit them outside a cycle. Commits made by a cycle
+  use `graph-engineer(<feature>): …`; plain doc edits use conventional commits
+  (`docs(README): …`).
+
 ## Core design invariant
 
 **The orchestrating Claude never edits implementation files with Edit/Write
@@ -70,11 +87,11 @@ the applicable `## <feature-name>` heading, and `### Critique assurance` is a
 finalized resolution, not a runtime progress log — don't have any node write
 intermediate elevated-assurance state (which lens finished, whether
 canonicalization happened yet) to `PROJECT_CONTEXT.md`. Any change to `SKILL.md`
-that would have Claude editing code directly breaks the reasons this skill
-exists: preserving Claude's context/tokens for orchestration and judgment,
-reducing correlated self-review failure by putting Claude in the arbitration
-path, and specializing the dispatched writer/reviewer and the orchestrating
-contract/triage roles.
+that would have the orchestrating Claude editing implementation files directly
+breaks the reasons this skill exists: preserving Claude's context/tokens for
+orchestration and judgment, reducing correlated self-review failure by putting
+Claude in the arbitration path, and specializing the dispatched writer/reviewer
+and the orchestrating contract/triage roles.
 
 The sole file-content exception is terminal archival: only after VERIFY passes
 (or refactor-only reaches its final DONE-clearing review), and only when

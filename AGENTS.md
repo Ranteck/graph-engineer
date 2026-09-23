@@ -1,12 +1,14 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+This file provides guidance to Codex when maintaining this repository.
 
 ## What this repository is
 
-This repo *is* a single Codex skill package named `graph-engineer` (plus its
-README/LICENSE). There is no application code, no build step, no test suite, and no
-package manifest — the repo's only artifact is the skill definition itself:
+This repo's main artifact is a Claude Code skill package named `graph-engineer`,
+which uses Codex as its default implementation and review worker. There is no
+application code, build step, application test suite, or package manifest.
+The skill lives here; supporting documentation, validation hooks, and cycle
+state also exist in the repository:
 
 ```
 skills/graph-engineer/
@@ -20,17 +22,25 @@ skills/graph-engineer/
     └── sources.md                     # provenance: what's official Anthropic/OpenAI vs. not
 ```
 
+Below, `SKILL.md` means `skills/graph-engineer/SKILL.md`; reference-file
+basenames such as `sources.md` mean files in `skills/graph-engineer/references/`.
+
 `README.md` at the repo root is the human-facing explanation of the same skill and
 must stay consistent with `skills/graph-engineer/SKILL.md` — they describe the same
 8-node cycle from two angles (marketing/usage vs. operational instructions). When
 editing one, check whether the other needs a matching update (e.g. node numbering,
-flag names, the anti-loop cutoff wording).
+flag names, the anti-loop cutoff wording). Their *section order* is deliberately
+different, though: `README.md` is ordered for reading (what is this → what does
+the cycle look like → how do I use it → what can go wrong), while `SKILL.md` is
+ordered for execution (node 0 through node 7 in sequence). Don't treat a
+reordering of one as something that needs mirroring in the other — only the
+claims need to match, not the layout.
 
 ## Working in this repo
 
-There is nothing to build, lint, or test. "Development" here means editing Markdown
-(`SKILL.md`, `README.md`, the reference files) and keeping the following
-consistent across all of them:
+There is no application build or test suite. Development primarily means editing
+Markdown and validating documentary consistency. Keep the following consistent
+across `skills/graph-engineer/SKILL.md`, `README.md`, and the reference files:
 
 - The 8-node cycle order and names: PRE-FLIGHT → SPEC → IMPL → QUALITY GATE → CRITIQUE
   → DEBATE/TRIAGE → REFACTOR → VERIFY.
@@ -44,6 +54,39 @@ consistent across all of them:
   (see `sources.md`'s Verification method section) — a plugin update that adds
   resume-by-thread-ID could relax that barrier's requirements, but don't assume it
   without re-verifying the source.
+
+After any non-trivial doc edit, and before committing, review the changed claims
+against the invariants below and the relevant source-of-truth references. From
+the repository root, Codex can run these supporting checks:
+
+```sh
+rtk git diff --check
+rtk printf '%s\n' '{"tool_input":{"file_path":"README.md"}}' | rtk bash .claude/hooks/check-doc-invariants.sh
+rtk rg -n 'elevated-write-goal:(start|end)' README.md skills/graph-engineer/references/goal-templates.md
+```
+
+The hook checks pin/cycle/entry-point drift across the docs, but only warns:
+inspect its output even when it exits 0. The marker search must show exactly one
+start/end pair in `goal-templates.md` and no matches in `README.md`. These checks
+are partial; they do not replace the semantic review of the invariants.
+
+In Claude Code, `/invariant-check` dispatches the report-only
+`doc-consistency-reviewer`, and `.claude/settings.json` configures Edit/Write
+hooks. Its `guard-goal-template-duplication.sh` blocks matching README edits
+with exit 2. Codex must not assume that this slash command is available or that
+those Claude Code hooks run automatically for its own edits.
+
+## Other repo files
+
+- `CLAUDE.md` and `AGENTS.md` share project facts and design invariants, but may
+  differ in agent-specific commands and tooling. Keep shared claims consistent
+  when both files are in scope; do not require identical wording or edit a file
+  the user has excluded. Report any shared-rule change needing a separate update.
+- This repo is developed *with* graph-engineer itself: `PROJECT_CONTEXT.md` and
+  `PROJECT_CONTEXT.archive/` are live cycle state (pointer lines carry archive
+  sha256 hashes). Don't hand-edit them outside a cycle. Commits made by a cycle
+  use `graph-engineer(<feature>): …`; plain doc edits use conventional commits
+  (`docs(README): …`).
 
 ## Core design invariant
 
@@ -59,9 +102,9 @@ feature, PRE-FLIGHT resolves those values and gives required user-facing
 disclosures, then SPEC's initial section-creation write persists them with the
 feature contract. In write-authorized modes PRE-FLIGHT/SPEC also finalize the
 `### Critique assurance` resolution before IMPL — see
-`references/elevated-assurance.md` and
-`references/backend-selection.md`. All four are namespaced per feature under
-the applicable `## <feature-name>` heading, and `### Critique assurance` is a
+`skills/graph-engineer/references/elevated-assurance.md` and
+`skills/graph-engineer/references/backend-selection.md`. All four are namespaced
+per feature under the applicable `## <feature-name>` heading, and `### Critique assurance` is a
 finalized resolution, not a runtime progress log — don't have any node write
 intermediate elevated-assurance state (which lens finished, whether
 canonicalization happened yet) to `PROJECT_CONTEXT.md`. Any change to `SKILL.md`
@@ -78,8 +121,17 @@ verbatim to `PROJECT_CONTEXT.archive/<feature-slug>.md` and replace it with the
 required pointer. Both file changes must land together in the single terminal
 `Cycle-State: COMPLETE` commit; any missing pointer/archive counterpart is a
 PRE-FLIGHT stop condition, never permission to repair it automatically. See
-`references/context-lifecycle.md`. This exception does not permit writes to any
-other file-content path.
+`skills/graph-engineer/references/context-lifecycle.md`. This exception does not
+permit writes to any other file-content path.
+
+One narrow, explicitly scoped exception: when PRE-FLIGHT has authorized checkpoint
+commits, Claude may run local `git commit` after a passing QUALITY GATE (node 3),
+before CRITIQUE — see the "Checkpoint commit on a passing gate" paragraph there. This
+writes to `.git` (index/objects/refs) on the current branch, never to tracked file
+content, and never pushes or rewrites history. It exists because a long elevated-mode
+cycle can chain many REFACTOR rounds with no restore point between them if nothing
+commits until the end — don't read this exception as license for Claude to touch
+implementation file content, and don't let it drift into pushing or amending history.
 
 Related invariants worth preserving when editing `SKILL.md`:
 
@@ -88,7 +140,8 @@ Related invariants worth preserving when editing `SKILL.md`:
   `read-only`), not just a prompt convention. Don't describe it as a soft/optional
   guarantee on that path. This includes every Codex elevated-assurance lens and the
   exit challenger — none of them ever pass `--write`. Non-Codex guarantees and
-  mandatory mutation detection are defined in `references/backend-selection.md`.
+  mandatory mutation detection are defined in
+  `skills/graph-engineer/references/backend-selection.md`.
 - On the default `codex` path, after the first CRITIQUE in a cycle, every subsequent
   CRITIQUE and normal REFACTOR call passes `--resume-last` so Codex retains its own
   prior findings and Claude's triage decisions. The documented REFACTOR exception
@@ -102,7 +155,7 @@ Related invariants worth preserving when editing `SKILL.md`:
   challenger is fresh and deliberately becomes the new canonical thread on that
   Codex path — only the calls between those points resume as usual. The
   `backend: claude` elevated path has no canonical thread or `--resume-last`; follow
-  `references/backend-selection.md`.
+  `skills/graph-engineer/references/backend-selection.md`.
 - DEBATE (node 5) must classify every finding as valid / debatable / false positive —
   never a flat pass/fail — and false-positive rulings need one line of written
   justification, not silent discard. This holds under elevated assurance too:
